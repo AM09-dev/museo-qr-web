@@ -473,6 +473,36 @@ button {
 }
 
 /* ============================================================
+   Carga de salas (RF-08): barra hairline minimalista
+   ============================================================ */
+.loader {
+  position: relative;
+  width: 140px;
+  height: 1px;
+  margin: 48px auto;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+.loader::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--color-ink);
+  animation: loader-slide 1.1s var(--ease-out) infinite;
+}
+
+@keyframes loader-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(350%);
+  }
+}
+
+/* ============================================================
    Animaciones: fundidos delicados
    ============================================================ */
 @keyframes card-enter {

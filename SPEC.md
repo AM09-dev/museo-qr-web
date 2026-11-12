@@ -24,10 +24,18 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - `imageUrl` pública y verificada en las 5 salas para la cabecera de la vista de detalle.
   - `audioUrl` (audioguía MP3) y `videoUrl` (video panorámico MP4, reservado para el recorrido 360° diferido) funcionales con URLs públicas de prueba en las 5 salas.
   - Proveedores de muestra verificados por HTTP: imágenes de Lorem Picsum; audio de SoundHelix; video de W3C (`media.w3.org`), MDN (`mdn.github.io`) y Test-Videos.
-  - Datos tipados estrictamente como `Room[]` en `src/data/museumData.ts`.
+  - Datos tipados estrictamente como `Room[]` en `src/data/museumData.ts` (hoy actúan como fallback, ver RF-08).
+- **RF-08: Integración con Supabase (Datos Dinámicos)** *(Nuevo)*
+  - Conexión a Supabase mediante variables de entorno `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (archivos `.env` / plantilla `.env.example`).
+  - Cliente de Supabase en `src/lib/supabase.ts` inicializado con `import.meta.env`; exporta `supabase` y `isSupabaseConfigured` (`null` si faltan credenciales).
+  - Servicio `src/services/roomsService.ts` con `fetchRooms()`: consulta la tabla `rooms` ordenada por `number` ascendente y mapea los campos snake_case (`image_url`, `audio_url`, `video_url`) a la interfaz `Room` (`imageUrl`, `audioUrl`, `videoUrl`).
+  - **Fallback obligatorio:** ante ausencia de credenciales, error de red o error de la consulta, se usan los datos estáticos de `museumData.ts` para que la PWA nunca quede vacía.
+  - `App.tsx` carga las salas de forma asíncrona con **estado de carga minimalista** y conserva la lectura de `?sala=` en la URL (RF-04).
+  - Contrato de tabla `rooms`: `id`, `number`, `name` (jsonb ES/EN/FR/DE), `description` (jsonb ES/EN/FR/DE), `image_url`, `audio_url`, `video_url`.
 
 ## 3. Contratos de Datos y Tipado (`types.ts`)
-- Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `audioUrl` y `videoUrl`.
+- Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`.
+- En Supabase las URLs viajan en snake_case (`image_url`, `audio_url`, `video_url`); el mapeo a camelCase vive en `src/services/roomsService.ts`.
 
 ## 4. Convenciones de Código
 - Componentes React limpios y modulares; tipado estricto con `import type`.

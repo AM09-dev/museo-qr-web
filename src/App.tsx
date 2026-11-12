@@ -1,21 +1,40 @@
 import { useState, useEffect } from 'react';
-import type { Language } from './types';
-import { roomsData } from './data/museumData';
+import type { Language, Room } from './types';
+import { fetchRooms } from './services/roomsService';
 import { QRGenerator } from './components/QRGenerator';
 import { Globe, QrCode, Volume2, ArrowLeft, QrCode as QrIcon } from 'lucide-react';
 
 export default function App() {
   const [lang, setLang] = useState<Language>('es');
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState<boolean>(true);
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(() => {
     // RF-04: detección de escaneo QR por parámetro de URL, una sola vez al montar
-    const params = new URLSearchParams(window.location.search);
-    const roomFromUrl = params.get('sala');
-    return roomFromUrl && roomsData.some(r => r.id === roomFromUrl) ? roomFromUrl : null;
+    return new URLSearchParams(window.location.search).get('sala');
   });
   const [showQRPanel, setShowQRPanel] = useState<boolean>(false);
   const [isScrolled, setIsScrolled] = useState<boolean>(
     () => typeof window !== 'undefined' && window.scrollY > 4
   );
+
+  // RF-08: carga asíncrona de salas desde Supabase (con fallback local)
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchRooms().then((result) => {
+      if (cancelled) return;
+      setRooms(result);
+      // Valida el parámetro ?sala= contra los datos ya cargados
+      setSelectedRoomId((current) =>
+        current && !result.some((r) => r.id === current) ? null : current
+      );
+      setIsLoadingRooms(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Sombra en la barra superior al hacer scroll (RF-06)
   useEffect(() => {
@@ -29,7 +48,7 @@ export default function App() {
     window.history.pushState({}, '', window.location.pathname);
   };
 
-  const selectedRoom = roomsData.find(r => r.id === selectedRoomId);
+  const selectedRoom = rooms.find(r => r.id === selectedRoomId);
 
   // Si activó la vista del generador de QR
   if (showQRPanel) {
@@ -70,8 +89,13 @@ export default function App() {
         </div>
       </header>
 
-      {/* Detalle de la Sala Escaneada o Listado Principal */}
-      {selectedRoom ? (
+      {/* Estado de carga minimalista (RF-08) */}
+      {isLoadingRooms ? (
+        <main className="view-enter" role="status" aria-live="polite">
+          <p className="section-label">Cargando salas…</p>
+          <div className="loader" aria-hidden="true" />
+        </main>
+      ) : selectedRoom ? (
         <main className="view-enter" key={selectedRoom.id}>
           <button className="btn btn--ghost" onClick={handleBackToMenu}>
             <ArrowLeft size={16} aria-hidden="true" /> Volver al menú de salas
@@ -111,7 +135,7 @@ export default function App() {
         <main className="view-enter">
           <p className="section-label">Simulador de escaneo de QR por sala:</p>
           <div className="room-list">
-            {roomsData.map((room, index) => (
+            {rooms.map((room, index) => (
               <button
                 key={room.id}
                 className="room-card"
