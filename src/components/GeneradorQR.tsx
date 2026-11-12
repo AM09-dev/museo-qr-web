@@ -10,7 +10,7 @@ interface Props {
   onBack: () => void;
 }
 
-export function QRGenerator({ rooms, language = 'es', onBack }: Props) {
+export function GeneradorQR({ rooms, language = 'es', onBack }: Props) {
   const handlePrint = () => {
     window.print();
   };

@@ -35,7 +35,7 @@ function toDraft(room: Room): RoomDraft {
 }
 
 /** RF-10: vista principal del panel — lista salas y permite editarlas. */
-export function AdminDashboard({ onSignOut }: Props) {
+export function PanelAdmin({ onSignOut }: Props) {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [editingId, setEditingId] = useState<string | null>(null);

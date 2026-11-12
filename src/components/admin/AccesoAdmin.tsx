@@ -8,7 +8,7 @@ interface Props {
 }
 
 /** RF-10: formulario de acceso de administradores con Supabase Auth. */
-export function AdminLogin({ onAuthenticated }: Props) {
+export function AccesoAdmin({ onAuthenticated }: Props) {
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
