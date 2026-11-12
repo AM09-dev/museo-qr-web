@@ -10,8 +10,11 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - Reproductor de audioguía integrado bajo la descripción.
   - ~~Visor de video panorámico / recorrido 360°~~ → **diferido al backlog** (ver §5); los datos `videoUrl` se conservan para reactivarlo sin migraciones.
 - **RF-03: Cobros y Donaciones por QR** *(Pendiente — próxima iteración)* — Códigos QR alternativos para taquilla y aportaciones directas.
-- **RF-04: Carga Dinámica por Escaneo QR** — Detecta `?sala=id` en la URL y abre directamente esa sala; «Volver al menú» limpia el parámetro.
-- **RF-05: Generación y Exportación de Códigos QR por Sala** — Panel que genera e imprime los QR de las 5 salas (`?sala=sala-1` … `?sala=sala-5`).
+- **RF-04: Carga Dinámica por Escaneo QR** — Detecta `?sala=id` en la URL y abre directamente esa sala; el botón «Volver al menú» limpia el parámetro y solo está visible en modo interno (ver RF-09).
+- **RF-05: Generación y Exportación de Códigos QR por Sala** *(Actualizado — dinámico)*
+  - Panel que genera e imprime los QR de las salas cargadas (`?sala=<id>`), **100% dinámico**: `QRGenerator` recibe la lista `rooms: Room[]` (y el idioma activo `language`) como props desde `App.tsx`, obtenida vía `roomsService.ts`.
+  - Sin importación de datos estáticos: ids, números y títulos impresos coinciden exactamente con la base de datos en la nube (con fallback local automático).
+  - Si `rooms` está vacío, muestra un estado informativo limpio sin generar códigos.
 - **RF-06: Línea Gráfica y UX** *(Vigente: minimalista puro, estilo galería de arte moderna)*
   - Fondos blancos / gris ultra claro; tarjetas con bordes hairline finos, sin sombras pesadas y radios mínimos.
   - Tipografía editorial y jerarquizada: títulos ligeros con `clamp()`, etiquetas en versalitas espaciadas, interlineado y márgenes amplios.
@@ -32,6 +35,45 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - **Fallback obligatorio:** ante ausencia de credenciales, error de red o error de la consulta, se usan los datos estáticos de `museumData.ts` para que la PWA nunca quede vacía.
   - `App.tsx` carga las salas de forma asíncrona con **estado de carga minimalista** y conserva la lectura de `?sala=` en la URL (RF-04).
   - Contrato de tabla `rooms`: `id`, `number`, `name` (jsonb ES/EN/FR/DE), `description` (jsonb ES/EN/FR/DE), `image_url`, `audio_url`, `video_url`.
+  - **`QRGenerator` es 100% dinámico (RF-05):** recibe `rooms: Room[]` desde `App.tsx` (misma instancia cargada con `fetchRooms()`), eliminando el import directo de `museumData.ts` y garantizando coherencia total entre menú, detalle y códigos impresos.
+- **RF-09: Modo Exclusivo por Escaneo QR (Modo Kiosco / Exhibición Restringida)** *(Nuevo)*
+  - Al abrir la URL con un parámetro **válido** `?sala=<id>` que coincida con una sala cargada, la aplicación entra en **modo visitante restringido**:
+    - Se oculta el botón «Volver al menú de salas» (sin navegación hacia el menú general).
+    - Se oculta el botón «Ver QR» del encabezado.
+    - Se **bloquea el renderizado** de `QRGenerator` aunque se intente abrir.
+    - Únicamente se permite consumir la sala asignada (imagen, descripción, audioguía) y cambiar el idioma.
+  - Si `?sala=` contiene un **ID inexistente**: pantalla clara de «Sala no encontrada» sin exponer el menú de salas ni el generador QR.
+  - Si la URL **no contiene** `?sala=` (acceso raíz `/`): se conserva el comportamiento normal — menú de salas, navegación interna y acceso a «Ver QR» — para uso interno/curaduría.
+  - Los QR del panel RF-05 codifican exactamente `${window.location.origin}/?sala=${room.id}` para que el escaneo active este modo, usando la lista dinámica de salas de la base de datos.
+  - **Contenido de cada tarjeta** *(Actualizado — estética)*: las tarjetas del generador muestran **únicamente el título de la sala y el código QR gráfico**; la URL se **omite en texto plano** para mantener una estética visual minimalista y limpia (RF-06). Los márgenes y espaciados de la tarjeta se reajustan para conservar el equilibrio vertical sin el texto inferior.
+- **RF-10: Panel de Administración protegido con Supabase Auth** *(Nuevo)*
+  - Acceso por la ruta `/admin` o el parámetro `?view=admin` (estado de ruta simple en `App.tsx`).
+  - **Verificación de sesión** con `supabase.auth.getSession()` antes de renderizar:
+    - Sin sesión → `<AdminLogin />`: formulario de correo y contraseña con `supabase.auth.signInWithPassword()`.
+    - Con sesión → `<AdminDashboard />`: listado de salas con edición dinámica de textos multilingües (ES/EN/FR/DE) y multimedia (`image_url`, `audio_url`), y botón «Cerrar sesión» con `supabase.auth.signOut()`.
+  - Servicio `src/services/adminService.ts`: operaciones de escritura sobre la tabla `rooms` (actualizar campos JSONB `name`/`description`, títulos, imágenes y audios; crear/eliminar opcionales) **validando siempre la sesión activa** antes de escribir.
+  - Componentes en `src/components/admin/` (`AdminLogin.tsx`, `AdminDashboard.tsx`) con la línea gráfica vigente RF-06.
+  - Login: la tarjeta muestra el icono de acceso (candado) y la etiqueta **«Acceso de administradores»** centrada, sin título de página propio.
+  - Si Supabase no está configurado, el panel informa del requisito en lugar de fallar.
+  - Requiere en Supabase: usuario administrador en **Auth** y políticas RLS de escritura solo para roles autenticados.
+  - Terminología unificada: «administrador» en toda la interfaz, comentarios y mensajes (antes «curador»).
+- **RF-11: Integración con Supabase Storage (Carga y Gestión de Archivos Multimedia)** *(Nuevo)*
+  - **Alcance:** carga de **imágenes** y **audioguías MP3** desde el panel de administración (RF-10) hacia el bucket de Supabase Storage.
+  - **Bucket:** `museum-media` con dos carpetas internas: `images/` (imágenes) y `audios/` (audioguías).
+  - Servicio en `src/services/adminService.ts`:
+    - Función auxiliar `uploadMuseumMedia(file: File, folder: 'images' | 'audios'): Promise<string>` que sube el archivo con `supabase.storage.from('museum-media').upload(...)` y devuelve la **URL pública** mediante `getPublicUrl`.
+    - **Validación de sesión activa** (`requireSession()`) antes de subir, igual que el resto de mutaciones del RF-10.
+    - **Validación de formato permitido:**
+      - Imágenes (`images/`): `jpg`, `jpeg`, `png`, `webp`.
+      - Audios (`audios/`): `mp3`, `wav`, `m4a`.
+    - Ruta de subida única por archivo (nombre aleatorio + extensión) para evitar colisiones y sobrescrituras accidentales.
+    - Errores devueltos como mensajes claros en español (sin sesión, formato no permitido, error de red o del bucket).
+  - **Panel de administración (`AdminDashboard.tsx`):**
+    - Los campos de URL manuales de imagen y audioguía **se sustituyen por selectores de archivo** (`<input type="file" />`) en el formulario de edición de cada sala.
+    - Al elegir un archivo se **sube automáticamente** a Supabase Storage, mostrando un indicador visual de carga («Subiendo archivo…») y deshabilitando el envío mientras dure la subida.
+    - Al completarse la subida, el **campo interno de URL correspondiente se actualiza** con el enlace público obtenido (sin inputs de URL visibles) y el administrador **guarda los cambios de la sala** en la tabla `rooms` con el flujo `updateRoom` existente (RF-10).
+    - Si la subida falla, se muestra un mensaje de error sin perder los datos ya cargados en el borrador.
+  - **Requisitos en Supabase:** bucket `museum-media` creado (público o con política de lectura) y políticas RLS de **escritura** (`INSERT` en storage) solo para usuarios autenticados.
 
 ## 3. Contratos de Datos y Tipado (`types.ts`)
 - Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`.
