@@ -1,6 +1,7 @@
 import { QrCode } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import type { Language, Room } from '../types';
+import { textosUI } from '../i18n/textosUI';
 
 interface Props {
   rooms: Room[];
@@ -11,9 +12,11 @@ interface Props {
 
 /** RF-12: vista pública del menú de salas (simulador de escaneo QR). */
 export function MenuSalas({ rooms, language, onSelect }: Props) {
+  const t = textosUI[language];
+
   return (
     <main className="view-enter">
-      <p className="section-label">Simulador de escaneo de QR por sala:</p>
+      <p className="section-label">{t.etiquetaMenu}</p>
       <div className="room-list">
         {rooms.map((room, index) => (
           <button

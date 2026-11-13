@@ -4,10 +4,17 @@
 Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visitantes de un museo de 5 salas, con acceso mediante códigos QR físicos y contenido multilingüe.
 
 ## 2. Requerimientos Funcionales (RF) Vigentes
-- **RF-01: Multilingüismo Global** — 4 idiomas (ES, EN, FR, DE) con cambio dinámico e inmediato en todas las vistas.
+- **RF-01: Multilingüismo Global** *(Actualizado — textos de interfaz)* — 4 idiomas (ES, EN, FR, DE) con cambio dinámico e inmediato en todas las vistas.
+  - **Contenido:** nombres y descripciones de sala vienen traducidos en los datos (`Record<Language, string>`, ver §3).
+  - **Textos de interfaz:** todos los textos fijos de las vistas públicas (cabecera, menú de salas, detalle, «Sala no encontrada», estado de carga y generador QR), incluidas etiquetas accesibles (`aria-label`, `title`), salen de un diccionario único en `src/i18n/textosUI.ts`; ningún componente público contiene literales de interfaz.
+  - **Diccionario tipado:** `textosUI: Record<Language, TextosUI>`; si falta una clave en cualquier idioma, `npm run build` falla, de modo que ningún texto queda sin traducir.
+  - **Documento:** `<html lang>` y `document.title` se sincronizan con el idioma activo (lectores de pantalla y pestaña del navegador).
+  - **Fuera de alcance:** el panel de administración (RF-10/RF-11) permanece en español, por ser de uso interno y no tener selector de idioma.
+  - Idioma por defecto: ES.
 - **RF-02: Vista de Detalle Multimedia por Sala** *(Actualizado)*
   - Composición: **imagen de la sala arriba y texto descriptivo debajo**, en el idioma activo.
   - Reproductor de audioguía integrado bajo la descripción.
+  - Bajo la audioguía, sección «En esta sala» con las piezas individuales de la sala (ver RF-13).
   - ~~Visor de video panorámico / recorrido 360°~~ → **diferido al backlog** (ver §5); los datos `videoUrl` se conservan para reactivarlo sin migraciones.
 - **RF-03: Cobros y Donaciones por QR** *(Pendiente — próxima iteración)* — Códigos QR alternativos para taquilla y aportaciones directas.
 - **RF-04: Carga Dinámica por Escaneo QR** — Detecta `?sala=id` en la URL y abre directamente esa sala; el botón «Volver al menú» limpia el parámetro y solo está visible en modo interno (ver RF-09).
@@ -34,7 +41,7 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - Servicio `src/services/roomsService.ts` con `fetchRooms()`: consulta la tabla `rooms` ordenada por `number` ascendente y mapea los campos snake_case (`image_url`, `audio_url`, `video_url`) a la interfaz `Room` (`imageUrl`, `audioUrl`, `videoUrl`).
   - **Fallback obligatorio:** ante ausencia de credenciales, error de red o error de la consulta, se usan los datos estáticos de `museumData.ts` para que la PWA nunca quede vacía.
   - `App.tsx` carga las salas de forma asíncrona con **estado de carga minimalista** y conserva la lectura de `?sala=` en la URL (RF-04).
-  - Contrato de tabla `rooms`: `id`, `number`, `name` (jsonb ES/EN/FR/DE), `description` (jsonb ES/EN/FR/DE), `image_url`, `audio_url`, `video_url`.
+  - Contrato de tabla `rooms`: `id`, `number`, `name` (jsonb ES/EN/FR/DE), `description` (jsonb ES/EN/FR/DE), `image_url`, `audio_url`, `video_url`. Cada sala se relaciona con sus piezas en la tabla `exhibits` (ver RF-13).
   - **`GeneradorQR` es 100% dinámico (RF-05):** recibe `rooms: Room[]` desde `App.tsx` (misma instancia cargada con `fetchRooms()`), eliminando el import directo de `museumData.ts` y garantizando coherencia total entre menú, detalle y códigos impresos.
 - **RF-09: Modo Exclusivo por Escaneo QR (Modo Kiosco / Exhibición Restringida)** *(Nuevo)*
   - Al abrir la URL con un parámetro **válido** `?sala=<id>` que coincida con una sala cargada, la aplicación entra en **modo visitante restringido**:
@@ -50,7 +57,7 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - Acceso por la ruta `/admin` o el parámetro `?view=admin` (estado de ruta simple en `App.tsx`).
   - **Verificación de sesión** con `supabase.auth.getSession()` antes de renderizar:
     - Sin sesión → `<AccesoAdmin />`: formulario de correo y contraseña con `supabase.auth.signInWithPassword()`.
-    - Con sesión → `<PanelAdmin />`: listado de salas con edición dinámica de textos multilingües (ES/EN/FR/DE) y multimedia (`image_url`, `audio_url`), y botón «Cerrar sesión» con `supabase.auth.signOut()`.
+    - Con sesión → `<PanelAdmin />`: listado de salas con edición dinámica de textos multilingües (ES/EN/FR/DE) y multimedia (`image_url`, `audio_url`), gestión de las piezas de cada sala (ver RF-13) y botón «Cerrar sesión» con `supabase.auth.signOut()`.
   - Servicio `src/services/adminService.ts`: operaciones de escritura sobre la tabla `rooms` (actualizar campos JSONB `name`/`description`, títulos, imágenes y audios; crear/eliminar opcionales) **validando siempre la sesión activa** antes de escribir.
   - Componentes en `src/components/admin/` (`AccesoAdmin.tsx`, `PanelAdmin.tsx`) con la línea gráfica vigente RF-06.
   - Login: la tarjeta muestra el icono de acceso (candado) y la etiqueta **«Acceso de administradores»** centrada, sin título de página propio.
@@ -88,16 +95,72 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - **Orden de prioridad del enrutamiento** (sin cambios funcionales): admin (RF-10) → generador QR (RF-05, bloqueado en modo kiosco) → carga / sala no encontrada / detalle / menú.
   - **Comportamiento idéntico al previo:** RF-01 → RF-11 intactos; solo cambia la organización del código.
   - **Limpieza estética de los QR (RF-05, confirmada):** `GeneradorQR.tsx` no renderiza **ningún texto de URL** bajo los códigos — únicamente el título de la sala y el QR gráfico (ver RF-09 «Contenido de cada tarjeta»).
+- **RF-13: Piezas por Sala (Obras y Objetos Individuales)** *(Nuevo)*
+  - **Objetivo:** cada sala conserva su **descripción general** (RF-02) y además contiene una lista de **piezas** (por ejemplo, «Pintura X» y «Jarro X»), cada una con nombre, descripción e imagen propios. El administrador gestiona cada pieza por separado, sin reescribir la descripción de la sala.
+  - **Terminología:** «pieza» en la interfaz, en los mensajes y en los comentarios; `exhibit` / `exhibits` en tipos, servicios y base de datos, en línea con `Room` / `rooms`.
+  - **Tabla `exhibits` (Supabase):**
+    - Columnas: `id` (uuid, pk, `gen_random_uuid()`), `room_id` (text, FK → `rooms.id`, `on delete cascade`), `position` (int, orden dentro de la sala), `name` (jsonb ES/EN/FR/DE), `description` (jsonb ES/EN/FR/DE), `image_url` (text, nullable), `created_at` (timestamptz, `now()`).
+    - Índice en `(room_id, position)`.
+    - RLS: lectura (`SELECT`) pública para `anon` y `authenticated`; escritura (`INSERT` / `UPDATE` / `DELETE`) solo para `authenticated`, igual que `rooms` (RF-10).
+    - El SQL de creación (tabla, índice y políticas) se versiona en el repositorio en `supabase/exhibits.sql`, para que el esquema se pueda reproducir.
+  - **Contrato de datos (§3):**
+    - Nueva interfaz `Exhibit` en `src/types.ts`: `id`, `roomId`, `position`, `name: Record<Language, string>`, `description: Record<Language, string>`, `imageUrl?`.
+    - `Room` incorpora `exhibits?: Exhibit[]`, **opcional**: una sala sin piezas sigue siendo válida y los datos existentes no requieren migración.
+    - Mapeo snake_case ↔ camelCase (`room_id` ↔ `roomId`, `image_url` ↔ `imageUrl`) en `roomsService.ts` (lectura) y `adminService.ts` (escritura).
+  - **Lectura (extiende RF-08):**
+    - `fetchRooms()` obtiene salas y piezas en **una sola consulta**, pidiendo `exhibits` junto a `rooms` en el `select` (relación por la FK), con las piezas ordenadas por `position` ascendente.
+    - **Fallback:** `museumData.ts` incluye **al menos 2 piezas de ejemplo por sala**, con textos en los 4 idiomas e imagen pública (Lorem Picsum), para que la vista funcione sin Supabase.
+    - Si la consulta con piezas falla (por ejemplo, porque la tabla `exhibits` aún no existe), se **reintenta solo con salas**, que se muestran sin piezas; únicamente si también falla se aplica el fallback completo de RF-08. Así las salas reales nunca se sustituyen por las de ejemplo por un problema exclusivo de las piezas.
+  - **Vista pública (extiende RF-02):**
+    - En `DetalleSala`, bajo la audioguía, una sección **«En esta sala»** con las piezas en orden de `position`: imagen (si existe, `loading="lazy"`, `alt` = nombre), nombre y descripción en el idioma activo.
+    - Si la sala no tiene piezas, la sección **no se renderiza** (sin estado vacío visible al visitante).
+    - **Respaldo de idioma:** si el nombre o la descripción de una pieza está vacío en el idioma activo, se muestra el texto en español.
+    - Los textos fijos nuevos (título de la sección) se añaden a `TextosUI` en los 4 idiomas (RF-01).
+    - Disponible también en Modo Kiosco: quien escanea el QR de la sala ve sus piezas (RF-09); no se añade navegación nueva.
+    - Línea gráfica RF-06: tarjetas con borde hairline, imagen proporcionada y entrada escalonada con soporte de `prefers-reduced-motion`.
+  - **Servicio de escritura (extiende RF-10 / RF-11), en `adminService.ts`:**
+    - `createExhibit(roomId, data)`: crea la pieza al final de la sala (`position` = máximo actual + 1).
+    - `updateExhibit(id, patch)`: actualiza nombre, descripción o imagen.
+    - `deleteExhibit(id)`: elimina la pieza.
+    - Todas validan la sesión activa con `requireSession()` antes de escribir y devuelven `AdminResult` con mensajes de error en español, igual que las funciones de salas.
+    - La imagen se sube con `uploadMuseumMedia(file, 'images')` (RF-11), sin funciones de subida nuevas.
+  - **Panel de administración (extiende RF-10):**
+    - Nuevo componente `src/components/admin/EditorPiezas.tsx`, usado dentro de la edición de cada sala en `PanelAdmin.tsx`, para no aumentar la complejidad de este último (RF-12).
+    - Muestra el bloque **«Piezas (N)»** con la lista de piezas de la sala (nombre en ES e indicador `N/4 idiomas`) y las acciones **Añadir pieza**, **Editar** y **Eliminar**.
+    - Formulario de pieza: nombre y descripción por idioma (ES/EN/FR/DE) y selector de archivo para la imagen, con el indicador «Subiendo archivo…» y el envío deshabilitado durante la subida (RF-11).
+    - **Validación:** el nombre en español es obligatorio; el resto de campos es opcional.
+    - Cada pieza se guarda de forma independiente de los cambios de la sala (botón propio «Guardar pieza»); cancelar descarta solo el borrador de esa pieza.
+    - **Eliminar** pide confirmación explícita, nombrando la pieza, antes de borrar; la acción no se puede deshacer.
+    - Tras crear, editar o eliminar, la lista se actualiza sin recargar la página; los errores se muestran sin perder el borrador.
+  - **Fuera de alcance (ver §5):** reordenar piezas desde el panel, audioguía por pieza, QR por pieza y borrado del archivo de imagen en Storage al eliminar una pieza (la imagen queda huérfana en el bucket).
+  - **No regresión:** RF-01 → RF-12 intactos; una sala sin piezas se ve exactamente igual que hoy.
 
 ## 3. Contratos de Datos y Tipado (`types.ts`)
-- Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`.
+- Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`, y lista opcional `exhibits?: Exhibit[]` (RF-13).
+- Modelo `Exhibit` (pieza, RF-13): `id`, `roomId`, `position`, `name` y `description` como `Record<Language, string>`, e `imageUrl` opcional. En Supabase: tabla `exhibits` (`room_id`, `image_url`).
 - En Supabase las URLs viajan en snake_case (`image_url`, `audio_url`, `video_url`); el mapeo a camelCase vive en `src/services/roomsService.ts`.
+- Textos de interfaz (RF-01): interfaz `TextosUI` (una clave por texto) en `src/i18n/textosUI.ts`; cada componente público obtiene los suyos con `textosUI[language]`.
 
 ## 4. Convenciones de Código
 - Componentes React limpios y modulares; tipado estricto con `import type`.
+- Todo texto nuevo de interfaz pública se añade como clave de `TextosUI` en los 4 idiomas, nunca como literal en el componente (RF-01).
 - Separación de responsabilidades por vista (RF-12): `App.tsx` solo orquesta estado global y enrutamiento; el renderizado de cada vista vive en componentes independientes de `src/components/`.
 - Metodología SDD: primero `SPEC.md`, luego el código y, al finalizar, `MEMORIA.md`.
 
 ## 5. Backlog / Diferidos
 - **RF-03:** Cobros y donaciones por QR (taquilla).
 - **Recorrido panorámico 360°** (diferido de RF-02): reactivar la sección de video en la vista de detalle usando los `videoUrl` ya integrados en `museumData.ts`.
+- **Audioguía por idioma** (derivado de RF-01): hoy cada sala tiene un único `audioUrl`, aunque la etiqueta muestra el idioma activo; requeriría pasar `audio_url` a jsonb por idioma.
+- **Panel de administración multilingüe** (excluido de RF-01).
+- **Piezas, fase 2** (excluido de RF-13):
+  - Reordenar piezas desde el panel (subir/bajar, actualizando `position`).
+  - Audioguía por pieza (`audio_url` en `exhibits`).
+  - QR por pieza (`?sala=<id>&pieza=<id>`), con desplazamiento a la pieza dentro del detalle.
+  - Borrar de Storage la imagen de una pieza eliminada.
+
+## 6. Despliegue (Vercel)
+- **Plataforma:** Vercel con el preset Vite, directorio raíz `./`, build `npm run build` (`tsc -b && vite build`) y salida `dist`.
+- **Ramas:** `main` es producción; `development` y el resto de ramas se publican como despliegues *Preview*.
+- **Variables de entorno** (Production y Preview): `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. Vite las inserta en el bundle al compilar, así que cualquier cambio exige volver a desplegar. La `service_role` key nunca se configura en el frontend.
+- **Rutas de la SPA:** `vercel.json` reescribe cualquier ruta a `/index.html` para que la ruta `/admin` (RF-10) funcione al abrirla directamente o al recargar. Los archivos estáticos existentes (JS, CSS, imágenes) se sirven antes de aplicar la reescritura.
+- **Códigos QR (RF-05 / RF-09):** se imprimen desde el dominio de producción, ya que codifican `window.location.origin`.

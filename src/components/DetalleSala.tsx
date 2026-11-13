@@ -1,5 +1,7 @@
 import { ArrowLeft, Volume2 } from 'lucide-react';
 import type { Language, Room } from '../types';
+import type { CSSProperties } from 'react';
+import { enIdioma, textosUI } from '../i18n/textosUI';
 
 interface Props {
   room: Room;
@@ -10,14 +12,17 @@ interface Props {
   onBack: () => void;
 }
 
-/** RF-12: vista de detalle multimedia de una sala (imagen, descripción y audioguía). */
+/** RF-12: vista de detalle multimedia de una sala (imagen, descripción, audioguía y piezas, RF-13). */
 export function DetalleSala({ room, language, isKioskMode, onBack }: Props) {
+  const t = textosUI[language];
+  const exhibits = room.exhibits ?? [];
+
   return (
     <main className="view-enter" key={room.id}>
       {/* RF-09: en modo exclusivo no existe navegación al menú general */}
       {!isKioskMode && (
         <button className="btn btn--ghost" onClick={onBack}>
-          <ArrowLeft size={16} aria-hidden="true" /> Volver al menú de salas
+          <ArrowLeft size={16} aria-hidden="true" /> {t.volverMenu}
         </button>
       )}
 
@@ -42,9 +47,44 @@ export function DetalleSala({ room, language, isKioskMode, onBack }: Props) {
           <section className="media-card">
             <div className="media-card__header">
               <Volume2 size={18} aria-hidden="true" />
-              <span>Audioguía ({language.toUpperCase()})</span>
+              <span>
+                {t.audioguia} ({language.toUpperCase()})
+              </span>
             </div>
             <audio controls src={room.audioUrl} />
+          </section>
+        )}
+
+        {/* RF-13: piezas de la sala; sin piezas, la sección no se renderiza */}
+        {exhibits.length > 0 && (
+          <section className="exhibit-section" aria-labelledby={`${room.id}-exhibits`}>
+            <h3 className="section-label" id={`${room.id}-exhibits`}>
+              {t.enEstaSala}
+            </h3>
+            <ol className="exhibit-list">
+              {exhibits.map((exhibit, index) => {
+                const name = enIdioma(exhibit.name, language);
+                const description = enIdioma(exhibit.description, language);
+                return (
+                  <li
+                    key={exhibit.id}
+                    className="exhibit-card"
+                    style={{ '--i': index } as CSSProperties}
+                  >
+                    {exhibit.imageUrl && (
+                      <img
+                        className="exhibit-card__image"
+                        src={exhibit.imageUrl}
+                        alt={name}
+                        loading="lazy"
+                      />
+                    )}
+                    <h4 className="exhibit-card__name">{name}</h4>
+                    {description && <p className="exhibit-card__text">{description}</p>}
+                  </li>
+                );
+              })}
+            </ol>
           </section>
         )}
 

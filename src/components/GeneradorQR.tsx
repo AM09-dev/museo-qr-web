@@ -1,16 +1,19 @@
 import { QRCodeSVG } from 'qrcode.react';
 import type { Language, Room } from '../types';
 import { ArrowLeft, Printer } from 'lucide-react';
+import { textosUI } from '../i18n/textosUI';
 
 interface Props {
   /** Salas dinámicas (Supabase con fallback) — RF-05 / RF-08 */
   rooms: Room[];
-  /** Idioma activo para los títulos impresos */
+  /** Idioma activo para títulos impresos y textos del panel (RF-01) */
   language?: Language;
   onBack: () => void;
 }
 
 export function GeneradorQR({ rooms, language = 'es', onBack }: Props) {
+  const t = textosUI[language];
+
   const handlePrint = () => {
     window.print();
   };
@@ -19,28 +22,23 @@ export function GeneradorQR({ rooms, language = 'es', onBack }: Props) {
     <div className="qr-panel">
       <div className="qr-panel__header">
         <button className="btn btn--ghost" onClick={onBack}>
-          <ArrowLeft size={16} aria-hidden="true" /> Volver a la App
+          <ArrowLeft size={16} aria-hidden="true" /> {t.volverApp}
         </button>
         {rooms.length > 0 && (
           <button className="btn btn--primary" onClick={handlePrint}>
-            <Printer size={16} aria-hidden="true" /> Imprimir QR
+            <Printer size={16} aria-hidden="true" /> {t.imprimirQr}
           </button>
         )}
       </div>
 
-      <h2 className="qr-panel__title">Códigos QR de las Salas</h2>
-      <p className="qr-panel__intro">
-        Imprime o escanea estos códigos para probar el acceso directo a cada sala.
-      </p>
+      <h2 className="qr-panel__title">{t.qrTitulo}</h2>
+      <p className="qr-panel__intro">{t.qrIntro}</p>
 
       {rooms.length === 0 ? (
         /* RF-05: estado informativo cuando no hay salas disponibles */
         <section className="qr-card" role="status">
-          <h3 className="qr-card__name">No hay salas disponibles</h3>
-          <p className="qr-card__message">
-            No se pudieron cargar salas para generar códigos QR. Comprueba la conexión
-            e inténtalo de nuevo más tarde.
-          </p>
+          <h3 className="qr-card__name">{t.qrVacioTitulo}</h3>
+          <p className="qr-card__message">{t.qrVacioTexto}</p>
         </section>
       ) : (
         <div className="qr-grid">

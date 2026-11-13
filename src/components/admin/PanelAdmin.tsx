@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
-import type { Language, Room } from '../../types';
+import type { Exhibit, Language, Room } from '../../types';
 import { fetchRooms } from '../../services/roomsService';
 import { updateRoom, signOut, uploadMuseumMedia } from '../../services/adminService';
 import { supabase } from '../../lib/supabase';
 import { LogOut, Pencil, X, Check } from 'lucide-react';
+import { LANGUAGES, contarIdiomas } from './idiomas';
+import { EditorPiezas } from './EditorPiezas';
 
 interface Props {
   /** Vuelve a la pantalla de login (RF-10). */
@@ -17,13 +19,6 @@ interface RoomDraft {
   imageUrl: string;
   audioUrl: string;
 }
-
-const LANGUAGES: { code: Language; label: string }[] = [
-  { code: 'es', label: 'Español' },
-  { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Français' },
-  { code: 'de', label: 'Deutsch' },
-];
 
 function toDraft(room: Room): RoomDraft {
   return {
@@ -143,6 +138,13 @@ export function PanelAdmin({ onSignOut }: Props) {
     setDraft(null);
   };
 
+  /** RF-13: refleja localmente las piezas creadas, editadas o eliminadas. */
+  const handleExhibitsChange = (roomId: string, exhibits: Exhibit[]) => {
+    setRooms((current) =>
+      current.map((room) => (room.id === roomId ? { ...room, exhibits } : room))
+    );
+  };
+
   const handleSignOut = async () => {
     await signOut();
     onSignOut();
@@ -195,9 +197,7 @@ export function PanelAdmin({ onSignOut }: Props) {
             {rooms.map((room, index) => {
               const isEditing = editingId === room.id;
               // Indicador: cuántos idiomas tienen título configurado
-              const langCount = LANGUAGES.filter(
-                ({ code }) => room.name[code]?.trim().length > 0
-              ).length;
+              const langCount = contarIdiomas(room.name);
               return (
                 <section key={room.id} className="admin-room">
                   <div className="admin-room__row">
@@ -315,6 +315,15 @@ export function PanelAdmin({ onSignOut }: Props) {
                         </button>
                       </div>
                     </form>
+                  )}
+
+                  {/* RF-13: piezas de la sala (fuera del <form> de la sala: sin formularios anidados) */}
+                  {isEditing && (
+                    <EditorPiezas
+                      roomId={room.id}
+                      exhibits={room.exhibits ?? []}
+                      onChange={(exhibits) => handleExhibitsChange(room.id, exhibits)}
+                    />
                   )}
                 </section>
               );

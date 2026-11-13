@@ -11,6 +11,7 @@ import { AccesoAdmin } from './components/admin/AccesoAdmin';
 import { PanelAdmin } from './components/admin/PanelAdmin';
 import { supabase } from './lib/supabase';
 import { isAdminRoute, getRoomParam } from './lib/routing';
+import { textosUI } from './i18n/textosUI';
 
 /** RF-10: estados del panel de administración. */
 type AdminState = 'idle' | 'checking' | 'login' | 'dashboard';
@@ -36,18 +37,30 @@ export default function App() {
   );
   // RF-10: ruta de administración protegida por Supabase Auth
   const [adminView] = useState<boolean>(() => isAdminRoute());
-  const [adminState, setAdminState] = useState<AdminState>(adminView ? 'checking' : 'idle');
+  // RF-10: sin cliente Supabase no hay sesión que verificar → directo al login,
+  // que informa del requisito de configuración en lugar de quedarse cargando.
+  const [adminState, setAdminState] = useState<AdminState>(() => {
+    if (!adminView) return 'idle';
+    return supabase ? 'checking' : 'login';
+  });
 
   // RF-10: verifica sesión activa antes de decidir login vs. dashboard
   useEffect(() => {
-    if (!adminView) return;
+    if (!adminView || !supabase) return;
 
     let cancelled = false;
 
-    supabase?.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      setAdminState(data.session ? 'dashboard' : 'login');
-    });
+    supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (cancelled) return;
+        setAdminState(data.session ? 'dashboard' : 'login');
+      })
+      .catch((error: unknown) => {
+        // Error de red/Auth: se muestra el login en vez de bloquear la vista
+        console.warn('[App] No se pudo verificar la sesión de administrador.', error);
+        if (!cancelled) setAdminState('login');
+      });
 
     return () => {
       cancelled = true;
@@ -68,6 +81,14 @@ export default function App() {
       cancelled = true;
     };
   }, []);
+
+  // RF-01: sincroniza idioma y título del documento con el idioma activo.
+  // El panel de administración queda en español (fuera de alcance de RF-01).
+  useEffect(() => {
+    const docLang = adminView ? 'es' : lang;
+    document.documentElement.lang = docLang;
+    document.title = textosUI[docLang].tituloApp;
+  }, [lang, adminView]);
 
   // Sombra en la barra superior al hacer scroll (RF-06)
   useEffect(() => {
@@ -122,9 +143,9 @@ export default function App() {
       />
 
       {isLoadingRooms ? (
-        <VistaCarga label="Cargando salas…" />
+        <VistaCarga label={textosUI[lang].cargandoSalas} />
       ) : salaNoEncontrada ? (
-        <SalaNoEncontrada />
+        <SalaNoEncontrada language={lang} />
       ) : selectedRoom ? (
         <DetalleSala
           room={selectedRoom}
