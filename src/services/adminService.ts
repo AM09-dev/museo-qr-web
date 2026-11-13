@@ -1,8 +1,10 @@
-import type { Language } from '../types';
+import type { Exhibit, Language } from '../types';
 import { supabase } from '../lib/supabase';
+import { EXHIBIT_COLUMNS, mapExhibitRow, type ExhibitRow } from './roomsService';
 
 /**
  * RF-10: operaciones de escritura sobre la tabla `rooms`.
+ * RF-13: operaciones de escritura sobre la tabla `exhibits`.
  * Todas las mutaciones validan la sesión activa antes de ejecutarse.
  */
 
@@ -112,6 +114,115 @@ export async function deleteRoom(id: string): Promise<AdminResult> {
     const message = err instanceof Error ? err.message : 'Error desconocido al eliminar.';
     return { ok: false, error: message };
   }
+}
+
+/** RF-13: datos editables de una pieza (camelCase en la UI). */
+export interface ExhibitInput {
+  name: Record<Language, string>;
+  description: Record<Language, string>;
+  imageUrl?: string;
+}
+
+/** RF-13: resultado de crear/actualizar una pieza, con la fila resultante. */
+export interface ExhibitResult extends AdminResult {
+  exhibit?: Exhibit;
+}
+
+/** RF-13: valida los campos obligatorios de una pieza (nombre en español). */
+function validateExhibit(input: ExhibitInput): string | null {
+  if (!input.name.es?.trim()) {
+    return 'El nombre de la pieza en español es obligatorio.';
+  }
+  return null;
+}
+
+/** RF-13: traduce los datos de la pieza a las columnas snake_case de `exhibits`. */
+function toExhibitPayload(input: ExhibitInput): Record<string, unknown> {
+  return {
+    name: input.name,
+    description: input.description,
+    image_url: input.imageUrl || null,
+  };
+}
+
+/** RF-13: crea una pieza al final de la sala (`position` = máximo actual + 1). */
+export async function createExhibit(roomId: string, input: ExhibitInput): Promise<ExhibitResult> {
+  const sessionError = await requireSession();
+  if (sessionError) return { ok: false, error: sessionError };
+
+  const validationError = validateExhibit(input);
+  if (validationError) return { ok: false, error: validationError };
+
+  try {
+    const { data: last, error: positionError } = await supabase!
+      .from('exhibits')
+      .select('position')
+      .eq('room_id', roomId)
+      .order('position', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (positionError) throw positionError;
+
+    const { data, error } = await supabase!
+      .from('exhibits')
+      .insert({ ...toExhibitPayload(input), room_id: roomId, position: (last?.position ?? 0) + 1 })
+      .select(EXHIBIT_COLUMNS)
+      .single();
+    if (error) throw error;
+
+    return { ok: true, exhibit: mapExhibitRow(data as ExhibitRow) };
+  } catch (err) {
+    return { ok: false, error: toErrorMessage(err, 'Error desconocido al crear la pieza.') };
+  }
+}
+
+/** RF-13: actualiza nombre, descripción o imagen de una pieza. */
+export async function updateExhibit(id: string, input: ExhibitInput): Promise<ExhibitResult> {
+  const sessionError = await requireSession();
+  if (sessionError) return { ok: false, error: sessionError };
+
+  const validationError = validateExhibit(input);
+  if (validationError) return { ok: false, error: validationError };
+
+  try {
+    const { data, error } = await supabase!
+      .from('exhibits')
+      .update(toExhibitPayload(input))
+      .eq('id', id)
+      .select(EXHIBIT_COLUMNS)
+      .single();
+    if (error) throw error;
+
+    return { ok: true, exhibit: mapExhibitRow(data as ExhibitRow) };
+  } catch (err) {
+    return { ok: false, error: toErrorMessage(err, 'Error desconocido al guardar la pieza.') };
+  }
+}
+
+/** RF-13: elimina una pieza (su imagen permanece en Storage, ver SPEC §5). */
+export async function deleteExhibit(id: string): Promise<AdminResult> {
+  const sessionError = await requireSession();
+  if (sessionError) return { ok: false, error: sessionError };
+
+  try {
+    const { error } = await supabase!.from('exhibits').delete().eq('id', id);
+    if (error) throw error;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: toErrorMessage(err, 'Error desconocido al eliminar la pieza.') };
+  }
+}
+
+/**
+ * Mensaje legible de un error de Supabase. Los errores de PostgREST son
+ * objetos planos con `message`, no instancias de `Error`.
+ */
+function toErrorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message;
+  if (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string') {
+    return err.message;
+  }
+  return fallback;
 }
 
 /** RF-11: carpetas permitidas dentro del bucket `museum-media`. */

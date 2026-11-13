@@ -404,6 +404,70 @@ button {
 }
 
 /* ============================================================
+   Piezas de la sala (RF-13): fichas editoriales separadas por filetes
+   ============================================================ */
+.exhibit-section {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.exhibit-section .section-label {
+  margin-bottom: 4px;
+}
+
+.exhibit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.exhibit-card {
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border-soft);
+  animation: card-enter 460ms var(--ease-out) backwards;
+  animation-delay: calc(160ms + var(--i, 0) * 60ms);
+}
+
+.exhibit-card:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.exhibit-card__image {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin-bottom: 18px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-soft);
+  filter: grayscale(8%);
+  transition: filter var(--transition-base);
+}
+
+.exhibit-card__image:hover {
+  filter: grayscale(0%);
+}
+
+.exhibit-card__name {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+  line-height: 1.35;
+  color: var(--color-text-strong);
+}
+
+.exhibit-card__text {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+/* ============================================================
    Panel QR (RF-05 / RF-06)
    ============================================================ */
 .qr-panel {
@@ -745,6 +809,96 @@ button {
   margin-top: 22px;
   display: flex;
   justify-content: flex-end;
+}
+
+/* ============================================================
+   Piezas en el panel de administración (RF-13)
+   ============================================================ */
+.admin-exhibits {
+  margin: 0 8px 24px;
+  padding: 18px 14px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.admin-exhibits__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.admin-exhibits__header .section-label {
+  flex: 1;
+  margin: 0;
+}
+
+.admin-exhibits__empty {
+  margin: 8px 0 14px;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.admin-exhibits__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.admin-exhibit + .admin-exhibit {
+  border-top: 1px solid var(--color-border-soft);
+}
+
+.admin-exhibit .admin-room__row {
+  gap: 12px;
+  padding: 12px 4px;
+}
+
+.admin-exhibit .room-card__name {
+  font-size: 0.95rem;
+}
+
+.admin-exhibit__delete:hover:not(:disabled) {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.admin-exhibit--new {
+  padding-top: 12px;
+}
+
+.admin-exhibit__form {
+  padding: 0 0 12px;
+}
+
+.admin-exhibit__preview {
+  display: block;
+  width: 120px;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  margin: 4px 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-soft);
+}
+
+.admin-exhibit__actions {
+  gap: 10px;
+}
+
+.admin-exhibits .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 560px) {
+  .admin-exhibit .admin-room__row {
+    flex-wrap: wrap;
+  }
+
+  .admin-exhibit .room-card__name {
+    flex-basis: 100%;
+  }
 }
 
 /* ============================================================

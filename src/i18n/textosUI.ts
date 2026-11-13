@@ -20,6 +20,8 @@ export interface TextosUI {
   // — DetalleSala —
   volverMenu: string;
   audioguia: string;
+  /** RF-13: título de la sección de piezas */
+  enEstaSala: string;
 
   // — VistaCarga —
   cargandoSalas: string;
@@ -46,6 +48,7 @@ export const textosUI: Record<Language, TextosUI> = {
     etiquetaMenu: 'Simulador de escaneo de QR por sala:',
     volverMenu: 'Volver al menú de salas',
     audioguia: 'Audioguía',
+    enEstaSala: 'En esta sala',
     cargandoSalas: 'Cargando salas…',
     salaNoEncontradaTitulo: 'Sala no encontrada',
     salaNoEncontradaTexto:
@@ -68,6 +71,7 @@ export const textosUI: Record<Language, TextosUI> = {
     etiquetaMenu: 'QR scan simulator by room:',
     volverMenu: 'Back to the rooms menu',
     audioguia: 'Audio guide',
+    enEstaSala: 'In this room',
     cargandoSalas: 'Loading rooms…',
     salaNoEncontradaTitulo: 'Room not found',
     salaNoEncontradaTexto:
@@ -90,6 +94,7 @@ export const textosUI: Record<Language, TextosUI> = {
     etiquetaMenu: 'Simulateur de scan QR par salle :',
     volverMenu: 'Retour au menu des salles',
     audioguia: 'Audioguide',
+    enEstaSala: 'Dans cette salle',
     cargandoSalas: 'Chargement des salles…',
     salaNoEncontradaTitulo: 'Salle introuvable',
     salaNoEncontradaTexto:
@@ -112,6 +117,7 @@ export const textosUI: Record<Language, TextosUI> = {
     etiquetaMenu: 'QR-Scan-Simulator nach Raum:',
     volverMenu: 'Zurück zum Raummenü',
     audioguia: 'Audioguide',
+    enEstaSala: 'In diesem Raum',
     cargandoSalas: 'Räume werden geladen…',
     salaNoEncontradaTitulo: 'Raum nicht gefunden',
     salaNoEncontradaTexto:
@@ -127,3 +133,11 @@ export const textosUI: Record<Language, TextosUI> = {
       'Prüfen Sie die Verbindung und versuchen Sie es später erneut.',
   },
 };
+
+/**
+ * RF-13: texto de contenido en el idioma activo, con respaldo en español
+ * si la traducción está vacía.
+ */
+export function enIdioma(textos: Record<Language, string>, language: Language): string {
+  return textos[language]?.trim() ? textos[language] : textos.es;
+}
