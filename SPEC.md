@@ -157,3 +157,10 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - Audioguía por pieza (`audio_url` en `exhibits`).
   - QR por pieza (`?sala=<id>&pieza=<id>`), con desplazamiento a la pieza dentro del detalle.
   - Borrar de Storage la imagen de una pieza eliminada.
+
+## 6. Despliegue (Vercel)
+- **Plataforma:** Vercel con el preset Vite, directorio raíz `./`, build `npm run build` (`tsc -b && vite build`) y salida `dist`.
+- **Ramas:** `main` es producción; `development` y el resto de ramas se publican como despliegues *Preview*.
+- **Variables de entorno** (Production y Preview): `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. Vite las inserta en el bundle al compilar, así que cualquier cambio exige volver a desplegar. La `service_role` key nunca se configura en el frontend.
+- **Rutas de la SPA:** `vercel.json` reescribe cualquier ruta a `/index.html` para que la ruta `/admin` (RF-10) funcione al abrirla directamente o al recargar. Los archivos estáticos existentes (JS, CSS, imágenes) se sirven antes de aplicar la reescritura.
+- **Códigos QR (RF-05 / RF-09):** se imprimen desde el dominio de producción, ya que codifican `window.location.origin`.
