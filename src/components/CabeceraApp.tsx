@@ -1,5 +1,6 @@
 import { Globe, QrCode } from 'lucide-react';
 import type { Language } from '../types';
+import { textosUI } from '../i18n/textosUI';
 
 interface Props {
   /** Idioma activo (RF-01) */
@@ -21,9 +22,11 @@ const LANGUAGES: { value: Language; label: string }[] = [
 
 /** RF-12: cabecera de la vista pública — título, acceso al panel QR y selector de idioma. */
 export function CabeceraApp({ lang, onLangChange, isScrolled, showQrButton, onShowQr }: Props) {
+  const t = textosUI[lang];
+
   return (
     <header className={`app-header${isScrolled ? ' is-scrolled' : ''}`}>
-      <h1 className="app-title">Museo Interactivo</h1>
+      <h1 className="app-title">{t.tituloApp}</h1>
 
       <div className="header-actions">
         {/* RF-09: sin acceso al generador QR en modo exclusivo por escaneo */}
@@ -31,11 +34,11 @@ export function CabeceraApp({ lang, onLangChange, isScrolled, showQrButton, onSh
           <button
             className="btn btn--primary"
             onClick={onShowQr}
-            title="Ver Códigos QR"
-            aria-label="Ver Códigos QR"
+            title={t.verQrAccesible}
+            aria-label={t.verQrAccesible}
           >
             <QrCode size={16} aria-hidden="true" />
-            <span>Ver QR</span>
+            <span>{t.verQr}</span>
           </button>
         )}
 
@@ -45,7 +48,7 @@ export function CabeceraApp({ lang, onLangChange, isScrolled, showQrButton, onSh
             className="lang-select"
             value={lang}
             onChange={(e) => onLangChange(e.target.value as Language)}
-            aria-label="Seleccionar idioma"
+            aria-label={t.seleccionarIdioma}
           >
             {LANGUAGES.map(({ value, label }) => (
               <option key={value} value={value}>

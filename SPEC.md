@@ -4,7 +4,13 @@
 Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visitantes de un museo de 5 salas, con acceso mediante códigos QR físicos y contenido multilingüe.
 
 ## 2. Requerimientos Funcionales (RF) Vigentes
-- **RF-01: Multilingüismo Global** — 4 idiomas (ES, EN, FR, DE) con cambio dinámico e inmediato en todas las vistas.
+- **RF-01: Multilingüismo Global** *(Actualizado — textos de interfaz)* — 4 idiomas (ES, EN, FR, DE) con cambio dinámico e inmediato en todas las vistas.
+  - **Contenido:** nombres y descripciones de sala vienen traducidos en los datos (`Record<Language, string>`, ver §3).
+  - **Textos de interfaz:** todos los textos fijos de las vistas públicas (cabecera, menú de salas, detalle, «Sala no encontrada», estado de carga y generador QR), incluidas etiquetas accesibles (`aria-label`, `title`), salen de un diccionario único en `src/i18n/textosUI.ts`; ningún componente público contiene literales de interfaz.
+  - **Diccionario tipado:** `textosUI: Record<Language, TextosUI>`; si falta una clave en cualquier idioma, `npm run build` falla, de modo que ningún texto queda sin traducir.
+  - **Documento:** `<html lang>` y `document.title` se sincronizan con el idioma activo (lectores de pantalla y pestaña del navegador).
+  - **Fuera de alcance:** el panel de administración (RF-10/RF-11) permanece en español, por ser de uso interno y no tener selector de idioma.
+  - Idioma por defecto: ES.
 - **RF-02: Vista de Detalle Multimedia por Sala** *(Actualizado)*
   - Composición: **imagen de la sala arriba y texto descriptivo debajo**, en el idioma activo.
   - Reproductor de audioguía integrado bajo la descripción.
@@ -92,12 +98,16 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
 ## 3. Contratos de Datos y Tipado (`types.ts`)
 - Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`.
 - En Supabase las URLs viajan en snake_case (`image_url`, `audio_url`, `video_url`); el mapeo a camelCase vive en `src/services/roomsService.ts`.
+- Textos de interfaz (RF-01): interfaz `TextosUI` (una clave por texto) en `src/i18n/textosUI.ts`; cada componente público obtiene los suyos con `textosUI[language]`.
 
 ## 4. Convenciones de Código
 - Componentes React limpios y modulares; tipado estricto con `import type`.
+- Todo texto nuevo de interfaz pública se añade como clave de `TextosUI` en los 4 idiomas, nunca como literal en el componente (RF-01).
 - Separación de responsabilidades por vista (RF-12): `App.tsx` solo orquesta estado global y enrutamiento; el renderizado de cada vista vive en componentes independientes de `src/components/`.
 - Metodología SDD: primero `SPEC.md`, luego el código y, al finalizar, `MEMORIA.md`.
 
 ## 5. Backlog / Diferidos
 - **RF-03:** Cobros y donaciones por QR (taquilla).
 - **Recorrido panorámico 360°** (diferido de RF-02): reactivar la sección de video en la vista de detalle usando los `videoUrl` ya integrados en `museumData.ts`.
+- **Audioguía por idioma** (derivado de RF-01): hoy cada sala tiene un único `audioUrl`, aunque la etiqueta muestra el idioma activo; requeriría pasar `audio_url` a jsonb por idioma.
+- **Panel de administración multilingüe** (excluido de RF-01).

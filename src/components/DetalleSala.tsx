@@ -1,5 +1,6 @@
 import { ArrowLeft, Volume2 } from 'lucide-react';
 import type { Language, Room } from '../types';
+import { textosUI } from '../i18n/textosUI';
 
 interface Props {
   room: Room;
@@ -12,12 +13,14 @@ interface Props {
 
 /** RF-12: vista de detalle multimedia de una sala (imagen, descripción y audioguía). */
 export function DetalleSala({ room, language, isKioskMode, onBack }: Props) {
+  const t = textosUI[language];
+
   return (
     <main className="view-enter" key={room.id}>
       {/* RF-09: en modo exclusivo no existe navegación al menú general */}
       {!isKioskMode && (
         <button className="btn btn--ghost" onClick={onBack}>
-          <ArrowLeft size={16} aria-hidden="true" /> Volver al menú de salas
+          <ArrowLeft size={16} aria-hidden="true" /> {t.volverMenu}
         </button>
       )}
 
@@ -42,7 +45,9 @@ export function DetalleSala({ room, language, isKioskMode, onBack }: Props) {
           <section className="media-card">
             <div className="media-card__header">
               <Volume2 size={18} aria-hidden="true" />
-              <span>Audioguía ({language.toUpperCase()})</span>
+              <span>
+                {t.audioguia} ({language.toUpperCase()})
+              </span>
             </div>
             <audio controls src={room.audioUrl} />
           </section>
