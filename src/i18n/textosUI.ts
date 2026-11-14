@@ -37,6 +37,32 @@ export interface TextosUI {
   qrIntro: string;
   qrVacioTitulo: string;
   qrVacioTexto: string;
+
+  // — CabeceraApp: acceso a la taquilla (RF-14) —
+  taquillaBoton: string;
+  taquillaBotonAccesible: string;
+
+  // — TicketPaymentView (RF-14) —
+  taquillaTitulo: string;
+  taquillaIntro: string;
+  precioEntrada: string;
+  /** Indicación obligatoria previa al ingreso */
+  avisoPago: string;
+  pagarEnLinea: string;
+  qrPagoTitulo: string;
+  /** Nota del QR cuando hay `payment_link` */
+  qrPagoNota: string;
+  /** Nota del QR de la propia vista (impresión en la entrada) */
+  qrTaquillaNota: string;
+  transferenciaTitulo: string;
+  campoClabe: string;
+  campoBeneficiario: string;
+  campoMonto: string;
+  copiarClabe: string;
+  copiarMonto: string;
+  copiado: string;
+  cargandoTaquilla: string;
+  taquillaSinDatos: string;
 }
 
 export const textosUI: Record<Language, TextosUI> = {
@@ -62,6 +88,28 @@ export const textosUI: Record<Language, TextosUI> = {
     qrVacioTexto:
       'No se pudieron cargar salas para generar códigos QR. ' +
       'Comprueba la conexión e inténtalo de nuevo más tarde.',
+    taquillaBoton: 'Taquilla',
+    taquillaBotonAccesible: 'Taquilla / Entradas',
+    taquillaTitulo: 'Taquilla y entradas',
+    taquillaIntro:
+      'Información de pago vigente para ingresar al museo. El acceso a las salas de la guía es libre.',
+    precioEntrada: 'Precio de entrada',
+    avisoPago:
+      'Realiza tu pago y muestra tu comprobante en recepción para ingresar al museo',
+    pagarEnLinea: 'Pagar en línea',
+    qrPagoTitulo: 'Código QR de pago',
+    qrPagoNota: 'Escanea el código para abrir el enlace de pago.',
+    qrTaquillaNota:
+      'Impreso en la entrada: escanea el código para ver la información de pago.',
+    transferenciaTitulo: 'Transferencia SPEI',
+    campoClabe: 'CLABE interbancaria',
+    campoBeneficiario: 'Beneficiario',
+    campoMonto: 'Monto exacto',
+    copiarClabe: 'Copiar CLABE',
+    copiarMonto: 'Copiar monto exacto',
+    copiado: 'Copiado',
+    cargandoTaquilla: 'Cargando información de taquilla…',
+    taquillaSinDatos: 'La taquilla aún no tiene datos de pago configurados.',
   },
   en: {
     tituloApp: 'Interactive Museum',
@@ -85,6 +133,28 @@ export const textosUI: Record<Language, TextosUI> = {
     qrVacioTexto:
       'Rooms could not be loaded to generate QR codes. ' +
       'Check your connection and try again later.',
+    taquillaBoton: 'Tickets',
+    taquillaBotonAccesible: 'Box office / Tickets',
+    taquillaTitulo: 'Box office and tickets',
+    taquillaIntro:
+      'Current payment information to enter the museum. Access to the guide rooms is free.',
+    precioEntrada: 'Admission price',
+    avisoPago:
+      'Complete your payment and show your receipt at reception to enter the museum',
+    pagarEnLinea: 'Pay online',
+    qrPagoTitulo: 'Payment QR code',
+    qrPagoNota: 'Scan the code to open the payment link.',
+    qrTaquillaNota:
+      'Printed at the entrance: scan the code to view the payment information.',
+    transferenciaTitulo: 'SPEI transfer',
+    campoClabe: 'Interbank CLABE',
+    campoBeneficiario: 'Beneficiary',
+    campoMonto: 'Exact amount',
+    copiarClabe: 'Copy CLABE',
+    copiarMonto: 'Copy exact amount',
+    copiado: 'Copied',
+    cargandoTaquilla: 'Loading box office information…',
+    taquillaSinDatos: 'The box office has no payment data configured yet.',
   },
   fr: {
     tituloApp: 'Musée interactif',
@@ -108,6 +178,28 @@ export const textosUI: Record<Language, TextosUI> = {
     qrVacioTexto:
       'Impossible de charger les salles pour générer les codes QR. ' +
       'Vérifiez la connexion et réessayez plus tard.',
+    taquillaBoton: 'Billetterie',
+    taquillaBotonAccesible: 'Billetterie / Entrées',
+    taquillaTitulo: 'Billetterie et entrées',
+    taquillaIntro:
+      'Informations de paiement en vigueur pour entrer au musée. L’accès aux salles du guide est libre.',
+    precioEntrada: 'Prix d’entrée',
+    avisoPago:
+      'Effectuez votre paiement et présentez votre reçu à l’accueil pour entrer au musée',
+    pagarEnLinea: 'Payer en ligne',
+    qrPagoTitulo: 'Code QR de paiement',
+    qrPagoNota: 'Scannez le code pour ouvrir le lien de paiement.',
+    qrTaquillaNota:
+      'Imprimé à l’entrée : scannez le code pour voir les informations de paiement.',
+    transferenciaTitulo: 'Virement SPEI',
+    campoClabe: 'CLABE interbancaire',
+    campoBeneficiario: 'Bénéficiaire',
+    campoMonto: 'Montant exact',
+    copiarClabe: 'Copier la CLABE',
+    copiarMonto: 'Copier le montant exact',
+    copiado: 'Copié',
+    cargandoTaquilla: 'Chargement des informations de billetterie…',
+    taquillaSinDatos: 'La billetterie n’a pas encore de données de paiement configurées.',
   },
   de: {
     tituloApp: 'Interaktives Museum',
@@ -131,6 +223,28 @@ export const textosUI: Record<Language, TextosUI> = {
     qrVacioTexto:
       'Die Räume konnten nicht geladen werden, um QR-Codes zu erzeugen. ' +
       'Prüfen Sie die Verbindung und versuchen Sie es später erneut.',
+    taquillaBoton: 'Kasse',
+    taquillaBotonAccesible: 'Kasse / Tickets',
+    taquillaTitulo: 'Kasse und Eintritt',
+    taquillaIntro:
+      'Aktuelle Zahlungsinformationen für den Museumsbesuch. Der Zugang zu den Räumen der Führung ist frei.',
+    precioEntrada: 'Eintrittspreis',
+    avisoPago:
+      'Bezahlen Sie und zeigen Sie Ihre Zahlungsbestätigung an der Kasse, um das Museum zu betreten',
+    pagarEnLinea: 'Online bezahlen',
+    qrPagoTitulo: 'Zahlungs-QR-Code',
+    qrPagoNota: 'Scannen Sie den Code, um den Zahlungslink zu öffnen.',
+    qrTaquillaNota:
+      'Am Eingang ausgedruckt: scannen Sie den Code, um die Zahlungsinformationen zu sehen.',
+    transferenciaTitulo: 'SPEI-Überweisung',
+    campoClabe: 'Interbanken-CLABE',
+    campoBeneficiario: 'Empfänger',
+    campoMonto: 'Genauer Betrag',
+    copiarClabe: 'CLABE kopieren',
+    copiarMonto: 'Betrag kopieren',
+    copiado: 'Kopiert',
+    cargandoTaquilla: 'Kasseninformationen werden geladen…',
+    taquillaSinDatos: 'Für die Kasse sind noch keine Zahlungsdaten hinterlegt.',
   },
 };
 

@@ -16,7 +16,7 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - Reproductor de audioguía integrado bajo la descripción.
   - Bajo la audioguía, sección «En esta sala» con las piezas individuales de la sala (ver RF-13).
   - ~~Visor de video panorámico / recorrido 360°~~ → **diferido al backlog** (ver §5); los datos `videoUrl` se conservan para reactivarlo sin migraciones.
-- **RF-03: Cobros y Donaciones por QR** *(Pendiente — próxima iteración)* — Códigos QR alternativos para taquilla y aportaciones directas.
+- **RF-03: Cobros y Donaciones por QR** *(Actualizado — derivado en RF-14)* — Códigos QR alternativos para taquilla y aportaciones directas. La **taquilla** queda cubierta por **RF-14** (QR dinámico de pago e información de cobro previo al ingreso); **las donaciones y la pasarela de pago integrada** siguen en el backlog (ver §5).
 - **RF-04: Carga Dinámica por Escaneo QR** — Detecta `?sala=id` en la URL y abre directamente esa sala; el botón «Volver al menú» limpia el parámetro y solo está visible en modo interno (ver RF-09).
 - **RF-05: Generación y Exportación de Códigos QR por Sala** *(Actualizado — dinámico)*
   - Panel que genera e imprime los QR de las salas cargadas (`?sala=<id>`), **100% dinámico**: `GeneradorQR` recibe la lista `rooms: Room[]` (y el idioma activo `language`) como props desde `App.tsx`, obtenida vía `roomsService.ts`.
@@ -134,12 +134,37 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
     - Tras crear, editar o eliminar, la lista se actualiza sin recargar la página; los errores se muestran sin perder el borrador.
   - **Fuera de alcance (ver §5):** reordenar piezas desde el panel, audioguía por pieza, QR por pieza y borrado del archivo de imagen en Storage al eliminar una pieza (la imagen queda huérfana en el bucket).
   - **No regresión:** RF-01 → RF-12 intactos; una sala sin piezas se ve exactamente igual que hoy.
+- **RF-14: Taquilla Digital y QR Dinámico de Pago** *(Nuevo)* — *(el enunciado original lo numeró RF-12; ese número ya estaba asignado a la arquitectura modular, así que se documenta como RF-14)*
+  - **Alcance:** módulo **informativo y de cobro previo al ingreso** al museo. **No bloquea el acceso a las salas de la guía**: la navegación pública, el Modo Kiosco (RF-09) y todo lo demás se mantienen intactos (RF-01 → RF-13 sin regresiones).
+  - **Configuración en Supabase, tabla `museum_settings`** (una sola fila con `id = 1`):
+    - Columnas: `id` (int, pk), `ticket_price` (numeric), `currency` (text, por defecto `MXN`), `payment_link` (text, nullable), `bank_clabe` (text, nullable), `bank_beneficiary` (text, nullable) y `created_at` / `updated_at` (timestamptz).
+    - RLS: `SELECT` público para `anon` y `authenticated`; `UPDATE` (y `INSERT` inicial) solo para `authenticated`, igual que `rooms` (RF-10).
+    - El SQL de creación se versiona en `supabase/museum_settings.sql`.
+  - **Servicio nuevo `src/services/settingsService.ts`:**
+    - `getMuseumSettings()`: **lectura pública** de la fila `id = 1` → `MuseumSettings | null` (`null` si Supabase no está configurado, falla la consulta o no existe la fila); la vista pública informa del estado en lugar de inventar precios.
+    - `updateMuseumSettings(data)`: **actualización autenticada** de `ticket_price`, `currency`, `payment_link`, `bank_clabe` y `bank_beneficiary`, reutilizando `requireSession()` de `adminService.ts` y devolviendo `AdminResult` con mensajes en español.
+    - Validaciones: `ticket_price` numérico ≥ 0; `currency` de 3 letras en mayúsculas; `payment_link` vacío o con esquema `http(s)://`; si la fila `id = 1` no existe, el error indica ejecutar `supabase/museum_settings.sql`.
+  - **Vista pública `src/components/TicketPaymentView.tsx`** (ruta `/?view=pago` o `/?view=taquilla`, detectada por `isTicketRoute()` en `src/lib/routing.ts`):
+    - **Precio vigente en tiempo real** desde Supabase, formateado como `$XX.XX MXN` (vía `Intl.NumberFormat`, con el código de moneda configurado).
+    - **Código QR dinámico**: apunta a `payment_link` si existe; en caso contrario a la propia vista `${window.location.origin}/?view=pago`, pensada para imprimirse y colocarse en la entrada física del museo.
+    - Si hay `payment_link`, botón principal **«Pagar en línea»** que abre el enlace en una pestaña nueva (`target="_blank"`, `rel="noopener noreferrer"`).
+    - Si hay `bank_clabe` y `bank_beneficiary`, **tarjeta minimalista de transferencia SPEI** con CLABE (mostrada con separación cada 4 dígitos), beneficiario y monto exacto, más los botones **«Copiar CLABE»** (dígitos sin espacios) y **«Copiar monto exacto»** (import numérico listo para pegar en la app bancaria) a un clic, con confirmación visual «Copiado» (`navigator.clipboard` con respaldo `execCommand`).
+    - **Indicación fija y obligatoria:** «Realiza tu pago y muestra tu comprobante en recepción para ingresar al museo» (en los 4 idiomas, RF-01).
+    - Estados: carga minimalista (`VistaCarga`), mensaje si la taquilla aún no tiene datos y aviso de error sin romper la vista. Botón «Volver al menú de salas»; el botón «Taquilla / Entradas» de la cabecera queda **oculto en Modo Kiosco** (RF-09).
+  - **Botón discreto en la cabecera:** `CabeceraApp` añade «Taquilla / Entradas» (variante `btn--ghost`, junto a «Ver QR»), accesible también por URL. Etiqueta visible corta («Taquilla» / «Tickets» / «Billetterie» / «Kasse») y `title` + `aria-label` completos («Taquilla / Entradas») para no saturar la cabecera en móvil.
+  - **Panel de administración (extiende RF-10):** nueva **pestaña «Taquilla y Cobro QR»** en `PanelAdmin.tsx` (junto a «Salas»), resuelta con el componente `src/components/admin/EditorTaquilla.tsx` para no aumentar la complejidad del panel (RF-12):
+    - Edita en tiempo real `ticket_price`, `currency`, `payment_link`, `bank_clabe` y `bank_beneficiary`, con guardado mediante `updateMuseumSettings` y mensajes de éxito/error en español conservando el borrador ante fallos.
+    - Muestra **en tiempo real el QR de Taquilla** con valor `${window.location.origin}/?view=pago` y un botón **«Imprimir QR de taquilla»** que imprime únicamente ese código (clase `print-solo-qr` en `<body>` + `afterprint`), listo para colocar en la entrada del museo.
+  - **Textos de interfaz:** las cadenas nuevas de la vista pública viven en `TextosUI` (4 idiomas, RF-01); el panel permanece en español (fuera de alcance de RF-01).
+  - **Línea gráfica RF-06:** tarjetas hairline, precios en tipografía editorial amplia, botones de borde fino con inversión monocroma al hover y fondos blancos.
+  - **Fuera de alcance (ver §5):** pasarela de pago integrada, donaciones, corte de caja, validación de comprobantes en recepción y bloqueo de acceso por falta de pago.
 
 ## 3. Contratos de Datos y Tipado (`types.ts`)
 - Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`, y lista opcional `exhibits?: Exhibit[]` (RF-13).
 - Modelo `Exhibit` (pieza, RF-13): `id`, `roomId`, `position`, `name` y `description` como `Record<Language, string>`, e `imageUrl` opcional. En Supabase: tabla `exhibits` (`room_id`, `image_url`).
 - En Supabase las URLs viajan en snake_case (`image_url`, `audio_url`, `video_url`); el mapeo a camelCase vive en `src/services/roomsService.ts`.
 - Textos de interfaz (RF-01): interfaz `TextosUI` (una clave por texto) en `src/i18n/textosUI.ts`; cada componente público obtiene los suyos con `textosUI[language]`.
+- Modelo `MuseumSettings` (taquilla, RF-14): `ticketPrice: number`, `currency: string`, `paymentLink?`, `bankClabe?`, `bankBeneficiary?`. En Supabase: fila `id = 1` de `museum_settings` (`ticket_price`, `currency`, `payment_link`, `bank_clabe`, `bank_beneficiary`); el mapeo vive en `src/services/settingsService.ts`.
 
 ## 4. Convenciones de Código
 - Componentes React limpios y modulares; tipado estricto con `import type`.
@@ -148,7 +173,7 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
 - Metodología SDD: primero `SPEC.md`, luego el código y, al finalizar, `MEMORIA.md`.
 
 ## 5. Backlog / Diferidos
-- **RF-03:** Cobros y donaciones por QR (taquilla).
+- **RF-03 (resto):** donaciones directas por QR y **pasarela de pago integrada** (cargo en línea real); la taquilla informativa y el QR de pago ya están en RF-14.
 - **Recorrido panorámico 360°** (diferido de RF-02): reactivar la sección de video en la vista de detalle usando los `videoUrl` ya integrados en `museumData.ts`.
 - **Audioguía por idioma** (derivado de RF-01): hoy cada sala tiene un único `audioUrl`, aunque la etiqueta muestra el idioma activo; requeriría pasar `audio_url` a jsonb por idioma.
 - **Panel de administración multilingüe** (excluido de RF-01).
@@ -163,4 +188,4 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
 - **Ramas:** `main` es producción; `development` y el resto de ramas se publican como despliegues *Preview*.
 - **Variables de entorno** (Production y Preview): `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. Vite las inserta en el bundle al compilar, así que cualquier cambio exige volver a desplegar. La `service_role` key nunca se configura en el frontend.
 - **Rutas de la SPA:** `vercel.json` reescribe cualquier ruta a `/index.html` para que la ruta `/admin` (RF-10) funcione al abrirla directamente o al recargar. Los archivos estáticos existentes (JS, CSS, imágenes) se sirven antes de aplicar la reescritura.
-- **Códigos QR (RF-05 / RF-09):** se imprimen desde el dominio de producción, ya que codifican `window.location.origin`.
+- **Códigos QR (RF-05 / RF-09 / RF-14):** se imprimen desde el dominio de producción, ya que codifican `window.location.origin`. Incluye el QR de Taquilla (`/?view=pago`) generado en el panel de administración.

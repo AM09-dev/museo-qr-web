@@ -6,11 +6,15 @@ import { supabase } from '../../lib/supabase';
 import { LogOut, Pencil, X, Check } from 'lucide-react';
 import { LANGUAGES, contarIdiomas } from './idiomas';
 import { EditorPiezas } from './EditorPiezas';
+import { EditorTaquilla } from './EditorTaquilla';
 
 interface Props {
   /** Vuelve a la pantalla de login (RF-10). */
   onSignOut: () => void;
 }
+
+/** RF-14: pestañas del panel — gestión de salas o taquilla. */
+type Pestana = 'salas' | 'taquilla';
 
 /** Borrador editable de una sala (camelCase). */
 interface RoomDraft {
@@ -40,6 +44,8 @@ export function PanelAdmin({ onSignOut }: Props) {
   const [userEmail, setUserEmail] = useState<string>('');
   /** RF-11: campo multimedia que se está subiendo (imagen o audioguía). */
   const [uploadingField, setUploadingField] = useState<'imageUrl' | 'audioUrl' | null>(null);
+  /** RF-14: pestaña activa del panel. */
+  const [pestana, setPestana] = useState<Pestana>('salas');
 
   useEffect(() => {
     let cancelled = false;
@@ -150,6 +156,14 @@ export function PanelAdmin({ onSignOut }: Props) {
     onSignOut();
   };
 
+  /** RF-14: cambia de pestaña limpiando el estado de edición de salas. */
+  const cambiarPestana = (siguiente: Pestana) => {
+    if (siguiente === pestana) return;
+    if (siguiente === 'taquilla') cancelEditing();
+    setNotice(null);
+    setPestana(siguiente);
+  };
+
   const setDraftField = <K extends keyof RoomDraft>(key: K, value: RoomDraft[K]) => {
     setDraft((current) => (current ? { ...current, [key]: value } : current));
   };
@@ -190,7 +204,29 @@ export function PanelAdmin({ onSignOut }: Props) {
           </p>
         )}
 
-        {isLoading ? (
+        {/* RF-14: pestañas del panel */}
+        <nav className="admin-tabs" aria-label="Secciones del panel">
+          <button
+            type="button"
+            className={`admin-tab${pestana === 'salas' ? ' is-active' : ''}`}
+            aria-current={pestana === 'salas' ? 'page' : undefined}
+            onClick={() => cambiarPestana('salas')}
+          >
+            Salas
+          </button>
+          <button
+            type="button"
+            className={`admin-tab${pestana === 'taquilla' ? ' is-active' : ''}`}
+            aria-current={pestana === 'taquilla' ? 'page' : undefined}
+            onClick={() => cambiarPestana('taquilla')}
+          >
+            Taquilla y Cobro QR
+          </button>
+        </nav>
+
+        {pestana === 'taquilla' ? (
+          <EditorTaquilla />
+        ) : isLoading ? (
           <div className="loader" aria-hidden="true" />
         ) : (
           <div className="room-list">

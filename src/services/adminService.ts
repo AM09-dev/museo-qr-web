@@ -23,8 +23,8 @@ export interface RoomPatch {
   videoUrl?: string;
 }
 
-/** Comprueba que haya cliente y sesión de administrador activa. */
-async function requireSession(): Promise<string | null> {
+/** Comprueba que haya cliente y sesión de administrador activa. Devuelve `null` si es válida. */
+export async function requireSession(): Promise<string | null> {
   if (!supabase) {
     return 'Supabase no está configurado (faltan credenciales en .env).';
   }

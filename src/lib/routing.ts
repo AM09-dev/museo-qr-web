@@ -17,3 +17,10 @@ export function getRoomParam(): string | null {
   if (typeof window === 'undefined') return null;
   return new URLSearchParams(window.location.search).get('sala');
 }
+
+/** RF-14: detecta la vista de taquilla — parámetro ?view=pago o ?view=taquilla. */
+export function isTicketRoute(): boolean {
+  if (typeof window === 'undefined') return false;
+  const view = new URLSearchParams(window.location.search).get('view');
+  return view === 'pago' || view === 'taquilla';
+}

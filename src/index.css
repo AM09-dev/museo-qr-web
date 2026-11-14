@@ -973,6 +973,217 @@ button {
 }
 
 /* ============================================================
+   Taquilla y QR de pago (RF-14): minimalista tipo galería
+   ============================================================ */
+.taquilla-panel {
+  padding-bottom: 24px;
+}
+
+.taquilla-panel__header {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 4px;
+}
+
+.taquilla-title {
+  margin: 0 0 10px;
+  font-size: clamp(1.5rem, 6vw, 1.9rem);
+  font-weight: 400;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  color: var(--color-text-strong);
+}
+
+.taquilla-intro {
+  margin: 0 0 32px;
+  max-width: 46ch;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.8;
+}
+
+.taquilla-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.taquilla-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 28px 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  animation: card-enter 380ms var(--ease-out) backwards;
+}
+
+.taquilla-card:nth-child(2) {
+  animation-delay: 80ms;
+}
+
+.taquilla-card:nth-child(3) {
+  animation-delay: 160ms;
+}
+
+.taquilla-card--qr {
+  align-items: center;
+  text-align: center;
+}
+
+.taquilla-precio {
+  margin: 0;
+  font-size: clamp(2rem, 7vw, 2.6rem);
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  color: var(--color-text-strong);
+  font-variant-numeric: tabular-nums;
+}
+
+.taquilla-vacio {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+
+.taquilla-aviso {
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-border-soft);
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+}
+
+.taquilla-pagar {
+  margin-top: 2px;
+}
+
+.taquilla-nota {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.taquilla-datos {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  margin: 0;
+}
+
+.taquilla-dato dt {
+  margin-bottom: 4px;
+  color: var(--color-text-faint);
+  font-size: 0.66rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.taquilla-dato dd {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.taquilla-clabe {
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.08em;
+}
+
+.taquilla-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+/* ============================================================
+   Panel de administración: pestañas y sección de taquilla (RF-14)
+   ============================================================ */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin: 26px 0 28px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.admin-tab {
+  padding: 10px 2px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-faint);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.admin-tab:hover {
+  color: var(--color-ink);
+}
+
+.admin-tab.is-active {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-ink);
+}
+
+.admin-taquilla__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 32px;
+  align-items: start;
+}
+
+.admin-taquilla__qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  text-align: center;
+}
+
+.admin-taquilla__url {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.72rem;
+  color: var(--color-text-faint);
+  word-break: break-all;
+}
+
+.admin-taquilla__nota {
+  margin: 0;
+  color: var(--color-text-faint);
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 560px) {
+  .admin-taquilla__grid {
+    gap: 24px;
+  }
+}
+
+/* ============================================================
    Impresión (RF-05): fondo claro para códigos QR físicos
    ============================================================ */
 @media print {
@@ -1000,5 +1211,27 @@ button {
   .qr-panel__header,
   .btn {
     display: none !important;
+  }
+
+  /* RF-14: al imprimir desde el panel, sale solo el QR de taquilla */
+  body.print-solo-qr * {
+    visibility: hidden;
+  }
+
+  body.print-solo-qr .taquilla-print,
+  body.print-solo-qr .taquilla-print * {
+    visibility: visible;
+  }
+
+  body.print-solo-qr .taquilla-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: #ffffff !important;
   }
 }
