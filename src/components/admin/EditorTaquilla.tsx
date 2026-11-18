@@ -186,7 +186,7 @@ export function EditorTaquilla() {
                 type="text"
                 value={draft.bankBeneficiary}
                 onChange={(e) => setField('bankBeneficiary', e.target.value)}
-                placeholder="Museo Interactivo"
+                placeholder="Museo Utrilla"
               />
             </label>
 
