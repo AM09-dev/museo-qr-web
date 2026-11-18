@@ -1,11 +1,14 @@
 import type { Exhibit, Language, Room } from '../types';
 import { roomsData } from '../data/museumData';
 import { supabase } from '../lib/supabase';
+import { guardarRespaldoSalas, leerRespaldoSalas } from './offlineStorage';
 
 /**
  * RF-08: servicio de salas con consulta dinámica a la tabla `rooms`
  * y fallback a los datos estáticos de `museumData.ts`.
  * RF-13: incluye las piezas de cada sala (tabla `exhibits`).
+ * RF-15: guarda una copia local de los datos reales de Supabase para poder
+ * consultarlos sin conexión (copia local → `museumData.ts`).
  */
 
 const ROOM_COLUMNS = 'id, number, name, description, image_url, audio_url, video_url';
@@ -68,8 +71,11 @@ function mapRoomRow(row: RoomRow): Room {
  *
  * - Si la consulta con piezas falla (p. ej. la tabla `exhibits` aún no existe),
  *   reintenta solo con salas para no sustituir datos reales por los de ejemplo.
- * - Si Supabase no está configurado o también falla la consulta de salas,
- *   devuelve los datos locales de respaldo (RF-08).
+ * - Si Supabase no está configurado, devuelve los datos locales de respaldo
+ *   (RF-08, sin cambios: en desarrollo sin `.env` no se usa la copia local).
+ * - Si Supabase está configurado pero no hay conexión (RF-15), el orden es
+ *   **copia local de la última lectura exitosa → `museumData.ts`**; la copia
+ *   local puede estar desactualizada.
  */
 export async function fetchRooms(): Promise<Room[]> {
   if (!supabase) {
@@ -86,7 +92,9 @@ export async function fetchRooms(): Promise<Room[]> {
     if (error) throw error;
     if (!data || data.length === 0) return roomsData;
 
-    return (data as RoomRow[]).map(mapRoomRow);
+    const rooms = (data as RoomRow[]).map(mapRoomRow);
+    guardarRespaldoSalas(rooms); // RF-15: copia para consultas sin conexión
+    return rooms;
   } catch (error) {
     console.warn('[roomsService] No se pudieron cargar las piezas; se reintenta solo con salas.', error);
   }
@@ -100,9 +108,17 @@ export async function fetchRooms(): Promise<Room[]> {
     if (error) throw error;
     if (!data || data.length === 0) return roomsData;
 
-    return (data as RoomRow[]).map(mapRoomRow);
+    const rooms = (data as RoomRow[]).map(mapRoomRow);
+    guardarRespaldoSalas(rooms); // RF-15: copia para consultas sin conexión
+    return rooms;
   } catch (error) {
-    console.warn('[roomsService] Supabase no disponible; se usan datos locales de respaldo.', error);
+    console.warn('[roomsService] Supabase no disponible; se usa el respaldo local.', error);
+
+    const respaldo = leerRespaldoSalas();
+    if (respaldo) {
+      console.info('[roomsService] Salas leídas de la copia local (posiblemente desactualizada).');
+      return respaldo;
+    }
     return roomsData;
   }
 }

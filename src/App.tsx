@@ -7,10 +7,11 @@ import { MenuSalas } from './components/MenuSalas';
 import { DetalleSala } from './components/DetalleSala';
 import { SalaNoEncontrada } from './components/SalaNoEncontrada';
 import { VistaCarga } from './components/VistaCarga';
+import { TicketPaymentView } from './components/TicketPaymentView';
 import { AccesoAdmin } from './components/admin/AccesoAdmin';
 import { PanelAdmin } from './components/admin/PanelAdmin';
 import { supabase } from './lib/supabase';
-import { isAdminRoute, getRoomParam } from './lib/routing';
+import { isAdminRoute, getRoomParam, isTicketRoute } from './lib/routing';
 import { textosUI } from './i18n/textosUI';
 
 /** RF-10: estados del panel de administración. */
@@ -32,6 +33,8 @@ export default function App() {
   const [urlRoomParam] = useState<string | null>(() => getRoomParam());
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(urlRoomParam);
   const [showQRPanel, setShowQRPanel] = useState<boolean>(false);
+  // RF-14: vista de taquilla (?view=pago o ?view=taquilla, o botón de cabecera)
+  const [showTicketView, setShowTicketView] = useState<boolean>(() => isTicketRoute());
   const [isScrolled, setIsScrolled] = useState<boolean>(
     () => typeof window !== 'undefined' && window.scrollY > 4
   );
@@ -126,6 +129,19 @@ export default function App() {
     return <PanelAdmin onSignOut={() => setAdminState('login')} />;
   }
 
+  // RF-14: vista de taquilla (informativa; bloqueada en modo exclusivo, RF-09)
+  if (showTicketView && !isKioskMode) {
+    return (
+      <TicketPaymentView
+        language={lang}
+        onBack={() => {
+          setShowTicketView(false);
+          handleBackToMenu();
+        }}
+      />
+    );
+  }
+
   // RF-05: vista del generador de QR (bloqueada en modo exclusivo, RF-09)
   if (showQRPanel && !isKioskMode) {
     return <GeneradorQR rooms={rooms} language={lang} onBack={() => setShowQRPanel(false)} />;
@@ -140,6 +156,8 @@ export default function App() {
         isScrolled={isScrolled}
         showQrButton={!isKioskMode}
         onShowQr={() => setShowQRPanel(true)}
+        showTicketButton={!isKioskMode}
+        onShowTicket={() => setShowTicketView(true)}
       />
 
       {isLoadingRooms ? (
