@@ -1,10 +1,13 @@
 import type { MuseumSettings } from '../types';
 import { supabase } from '../lib/supabase';
 import { requireSession, type AdminResult } from './adminService';
+import { guardarRespaldoTaquilla, leerRespaldoTaquilla } from './offlineStorage';
 
 /**
  * RF-14: servicio de taquilla — lectura pública y escritura autenticada
  * de la tabla `museum_settings` (una sola fila, `id = 1`).
+ * RF-15: guarda una copia local de la última lectura exitosa para poder
+ * mostrar la taquilla sin conexión (marcada con `fromCache`).
  */
 
 /** Fila tal como llega desde PostgREST (snake_case). */
@@ -21,6 +24,8 @@ interface MuseumSettingsRow {
 export interface SettingsReadResult {
   settings: MuseumSettings | null;
   error?: string;
+  /** RF-15: `true` cuando los datos provienen de la copia local (sin conexión). */
+  fromCache?: boolean;
 }
 
 /** Valores por defecto usados como respaldo en el formulario del panel. */
@@ -49,6 +54,8 @@ function mapRow(row: MuseumSettingsRow): MuseumSettings {
  * Devuelve `null` (sin lanzar) si Supabase no está configurado, si falla la
  * consulta o si la fila no existe todavía, para que la vista pública informe
  * del estado en lugar de inventar un precio.
+ * RF-15: una lectura exitosa guarda copia local; si la consulta falla (sin
+ * conexión) se devuelve esa copia marcada con `fromCache: true`.
  */
 export async function getMuseumSettings(): Promise<SettingsReadResult> {
   if (!supabase) {
@@ -70,8 +77,17 @@ export async function getMuseumSettings(): Promise<SettingsReadResult> {
       };
     }
 
-    return { settings: mapRow(data as MuseumSettingsRow) };
+    const settings = mapRow(data as MuseumSettingsRow);
+    guardarRespaldoTaquilla(settings); // RF-15: copia para consulta sin conexión
+    return { settings };
   } catch (err) {
+    // RF-15: sin conexión se ofrece la última copia local conocida
+    const respaldo = leerRespaldoTaquilla();
+    if (respaldo) {
+      console.warn('[settingsService] Supabase no disponible; se usa la copia local de taquilla.', err);
+      return { settings: respaldo, fromCache: true };
+    }
+
     const message =
       err instanceof Error ? err.message : 'Error desconocido al leer la configuración.';
     return { settings: null, error: message };

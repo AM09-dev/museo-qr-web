@@ -1059,6 +1059,19 @@ button {
   line-height: 1.7;
 }
 
+/* RF-15: aviso de datos leídos de la copia local (sin conexión) */
+.taquilla-offline {
+  margin: -4px 0 24px;
+  padding: 14px 18px;
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: 0.88rem;
+  line-height: 1.7;
+  animation: card-enter 380ms var(--ease-out) backwards;
+}
+
 .taquilla-pagar {
   margin-top: 2px;
 }

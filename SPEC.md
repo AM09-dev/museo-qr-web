@@ -158,6 +158,37 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - **Textos de interfaz:** las cadenas nuevas de la vista pública viven en `TextosUI` (4 idiomas, RF-01); el panel permanece en español (fuera de alcance de RF-01).
   - **Línea gráfica RF-06:** tarjetas hairline, precios en tipografía editorial amplia, botones de borde fino con inversión monocroma al hover y fondos blancos.
   - **Fuera de alcance (ver §5):** pasarela de pago integrada, donaciones, corte de caja, validación de comprobantes en recepción y bloqueo de acceso por falta de pago.
+- **RF-15: Soporte Offline (Service Worker y Respaldo Local)** *(Nuevo)*
+  - **Objetivo:** que el despliegue de Vercel **nunca muestre una pantalla en negro** al abrirse sin conexión, siempre que la app se haya cargado al menos una vez con internet. RF-01 → RF-14 intactos.
+  - **Service Worker `public/sw.js`** (archivo estático servido en `/sw.js`, JS plano sin dependencias y fuera del bundle de Vite):
+    - Caché única versionada (`museoqr-v1`); en `activate` se eliminan las cachés `museoqr-*` anteriores y se llama a `self.clients.claim()` para controlar la página abierta en la primera instalación.
+    - **Precaché del app shell en `install`:** `/index.html` y **todos los assets que este referencia** (`/assets/*.js`, `/assets/*.css`, `/favicon.svg`, …), extraídos del HTML con una expresión regular en lugar de fijarlos en código, porque los hashes cambian en cada build. Así, tras una primera carga online, la primera recarga sin conexión ya sirve shell + bundle completos. Si la instalación no puede completar el shell, se descarta (el SW se reintentará en la próxima comprobación) en lugar de dejar una caché a medias.
+    - **Actualización atómica del shell:** el HTML en caché solo se sustituye cuando **todos** sus assets están también en caché (primero se añaden los assets nuevos, después el HTML y al final se podan los assets huérfanos de builds anteriores), de modo que la caché nunca queda con un HTML que referencie bundles inexistentes. Se refresca en segundo plano en cada navegación online.
+    - **Match con `ignoreVary: true`:** las respuestas de los assets llevan `Vary: Origin` (Vite añade `crossorigin` al script **y** al stylesheet) y la petición del navegador incluye la cabecera `Origin`, mientras que una entrada guardada desde una URL puede no incluirla; sin ignorar Vary el match falla justo para las peticiones del parser y la app quedaría en negro offline (detectado y corregido en la prueba de modo avión, ver MEMORIA M24).
+    - **Estrategias de `fetch` (solo peticiones `GET` sobre `http(s)`):**
+      1. **Rutas / navegaciones** (`request.mode === 'navigate'`): **network-first** → `index.html` en caché (sirve para cualquier ruta o query: `/admin`, `/?sala=…`, `/?view=pago`, `/?view=admin`) → **página HTML estática de respaldo** generada por el propio SW (aviso «Sin conexión» con botón «Reintentar», textos en ES/EN/FR/DE según `navigator.language` y línea gráfica RF-06). Nunca pantalla en negro ni error crudo del navegador.
+      2. **Assets con hash del build** (`/assets/*`): **cache-first** (el hash del build garantiza la invalidación).
+      3. **Recursos ya visitados** (resto de mismo origen —favicon, iconos— e imágenes/audio/fuentes de terceros, p. ej. Picsum y SoundHelix): **stale-while-revalidate** — responde desde la caché si existe y actualiza en segundo plano; si no hay copia y falla la red, devuelve una **respuesta de error controlada** en lugar de rechazar la petición. Solo se guardan respuestas aptas (`ok` u opacas, nunca `206`) y dentro de `try/catch` (cuota o modo incógnito).
+      4. **Supabase / API de datos:** **sin caché HTTP** (passthrough a la red): el respaldo de datos es el localStorage del punto siguiente, para no almacenar respuestas autenticadas ni volátiles. Sin conexión la petición falla y los servicios caen al respaldo local.
+    - **Respuestas de proxy sin conexión (502/503/504):** un proxy (el de Vercel en local, p. ej.) puede responder con **502** en lugar de rechazar la petición, de modo que `fetch` no lanza y la app recibiría el error del proxy en vez de su caché. El SW trata 502/503/504 como **fallo de red** en las tres estrategias (navegación, cache-first y stale-while-revalidate) y cae al shell en caché o a la página de respaldo. *(Detectado en la prueba de modo avión en local, ver MEMORIA M24.)*
+    - **Quedan fuera de la caché runtime:** peticiones no-GET, protocolos no-HTTP(S), dominios `*.supabase.co` y **video** (`destination: 'video'`, hoy sin uso porque el recorrido 360° está diferido en §5; evitaría cachear archivos pesados).
+  - **Registro seguro del SW (`src/lib/serviceWorker.ts`, invocado desde `main.tsx`):**
+    - Solo se registra en **producción** (`import.meta.env.PROD`, para no interferir con el HMR en `npm run dev`) y en **contexto seguro** (`'serviceWorker' in navigator` + `window.isSecureContext`), con `scope: '/'` y de forma idempotente (sin duplicados).
+    - **Actualizaciones sin romper sesiones ni rutas:** el SW llama a **`skipWaiting()`** al instalarse (tras precachear el shell) y `clients.claim()` al activarse, de modo que una versión nueva **toma el control sin recargar la página** y `location.reload()` jamás se fuerza: la sesión de administrador en curso (RF-10), la ruta `/?view=pago` (RF-14) y el scroll/idioma quedan intactos; la nueva versión sirve las peticiones siguientes. Se comprueba si hay deploy nuevo con `registration.update()` al volver la pestaña a primer plano (solo aviso por consola). *(Motivo documentado: comprobado en el navegador que una versión en espera **no** se activa recargando, sino únicamente al cerrar todas las pestañas — inaceptable para un kiosco siempre abierto — por eso se opta por `skipWaiting()`.)*
+    - Un fallo de registro se registra con `console.warn` sin afectar el arranque de la app.
+  - **Respaldo local de datos (`src/services/offlineStorage.ts`, localStorage):**
+    - Claves versionadas `museoqr:rooms:v1` y `museoqr:settings:v1` con la forma `{ savedAt, data }`; lectura validada (JSON corrupto o datos con forma inválida → `null`) y escritura en `try/catch` (modo incógnito o cuota llena → se omite el respaldo sin romper nada).
+    - `fetchRooms()` (RF-08 / RF-13): si la consulta a Supabase tiene éxito, guarda copia; si falla (sin conexión) el orden es **copia local → `museumData.ts`**. Sin credenciales se conserva el comportamiento actual (directo a `museumData.ts`, RF-08), para no alterar el desarrollo sin `.env`. **La copia local puede estar desactualizada.**
+    - `getMuseumSettings()` (RF-14): guarda la copia tras una lectura exitosa; si falla la consulta, devuelve la copia marcada con `fromCache: true` en `SettingsReadResult`; si no hay copia, se mantiene el estado actual (`null` + error).
+    - Solo se copian **datos reales de Supabase**, nunca el fallback estático.
+  - **Taquilla sin conexión (extiende RF-14):** cuando `TicketPaymentView` recibe los datos de la copia local muestra un aviso (clave `avisoSinConexion` en `TextosUI`, 4 idiomas, RF-01) de que son datos de la última visita **y de que el pago en línea (Mercado Pago u otra pasarela vía `payment_link`) requiere internet**; en ese estado **no se muestra el botón «Pagar en línea»**. Los botones «Copiar CLABE» y «Copiar monto exacto» siguen funcionando (son locales) y el QR sigue visible.
+  - **Acciones que requieren internet (quedan explícitas en RF-15):**
+    - Pagar en línea (Mercado Pago u otra pasarela vía `payment_link`).
+    - Iniciar sesión y escribir en el panel de administración (RF-10, RF-11 y RF-13: alta/edición/borrado y subida de archivos a Storage).
+    - Leer en vivo Supabase (degrada a la copia local) y cualquier actualización de datos (quedan desactualizados hasta la siguiente conexión).
+    - **Funcionan sin conexión:** consultar salas, piezas, QR, textos, la información de taquilla guardada, el Modo Kiosco y copiar CLABE/monto.
+  - **Límites conocidos:** los datos de la copia local pueden estar desactualizados; la reproducción de audio sin conexión usa la respuesta completa en caché (el avance *seek* dentro del audio puede requerir conexión); si en el futuro se introduce code-splitting (§5), los chunks lazy deberán precachearse o desactivar el podado de `/assets/` en `sw.js`.
+  - **Fuera de alcance (ver §5):** Web Push, Background Sync (cola de escrituras offline) y manifest de instalación.
 
 ## 3. Contratos de Datos y Tipado (`types.ts`)
 - Modelo `Room` multilingüe: nombres y descripciones como `Record<Language, string>`, con URLs opcionales `imageUrl`, `audioUrl` y `videoUrl`, y lista opcional `exhibits?: Exhibit[]` (RF-13).
@@ -165,11 +196,14 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
 - En Supabase las URLs viajan en snake_case (`image_url`, `audio_url`, `video_url`); el mapeo a camelCase vive en `src/services/roomsService.ts`.
 - Textos de interfaz (RF-01): interfaz `TextosUI` (una clave por texto) en `src/i18n/textosUI.ts`; cada componente público obtiene los suyos con `textosUI[language]`.
 - Modelo `MuseumSettings` (taquilla, RF-14): `ticketPrice: number`, `currency: string`, `paymentLink?`, `bankClabe?`, `bankBeneficiary?`. En Supabase: fila `id = 1` de `museum_settings` (`ticket_price`, `currency`, `payment_link`, `bank_clabe`, `bank_beneficiary`); el mapeo vive en `src/services/settingsService.ts`.
+- Copia local de datos (RF-15): claves `museoqr:rooms:v1` (lista `Room[]`) y `museoqr:settings:v1` (`MuseumSettings`) en localStorage, con forma `{ savedAt: string, data: T }`; helpers tipados en `src/services/offlineStorage.ts`.
+- `SettingsReadResult` (RF-14 / RF-15) incorpora `fromCache?: boolean`: la vista sabe que los datos vienen de la copia local y no de una lectura en vivo.
 
 ## 4. Convenciones de Código
 - Componentes React limpios y modulares; tipado estricto con `import type`.
 - Todo texto nuevo de interfaz pública se añade como clave de `TextosUI` en los 4 idiomas, nunca como literal en el componente (RF-01).
 - Separación de responsabilidades por vista (RF-12): `App.tsx` solo orquesta estado global y enrutamiento; el renderizado de cada vista vive en componentes independientes de `src/components/`.
+- Service Worker (RF-15): `public/sw.js` es JS plano sin dependencias y sin pasar por Vite (se sirve tal cual desde `/sw.js`); su registro vive en `src/lib/serviceWorker.ts` y solo se ejecuta en producción. El respaldo de datos vive en `src/services/offlineStorage.ts` y se consume desde los servicios existentes, nunca desde los componentes.
 - Metodología SDD: primero `SPEC.md`, luego el código y, al finalizar, `MEMORIA.md`.
 
 ## 5. Backlog / Diferidos
@@ -182,6 +216,8 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
   - Audioguía por pieza (`audio_url` en `exhibits`).
   - QR por pieza (`?sala=<id>&pieza=<id>`), con desplazamiento a la pieza dentro del detalle.
   - Borrar de Storage la imagen de una pieza eliminada.
+- **Soporte offline, fase 2** (derivado de RF-15): Web Push, Background Sync (cola de escrituras del panel para reintentarlas al volver la red) y manifest de instalación (`manifest.webmanifest`, `theme-color`, `apple-touch-icon`) para que los navegadores ofrezcan «Instalar app»; el offline de RF-15 no depende de ellos.
+- **Code-splitting** (candidato detectado en M23): dividir el bundle del panel QR/taquilla; si se hace, actualizar el precaché/podado de `/assets/` en `sw.js` (RF-15).
 
 ## 6. Despliegue (Vercel)
 - **Plataforma:** Vercel con el preset Vite, directorio raíz `./`, build `npm run build` (`tsc -b && vite build`) y salida `dist`.
@@ -189,3 +225,4 @@ Aplicación Web Móvil (PWA) desarrollada con Vite, React y TypeScript para visi
 - **Variables de entorno** (Production y Preview): `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY`. Vite las inserta en el bundle al compilar, así que cualquier cambio exige volver a desplegar. La `service_role` key nunca se configura en el frontend.
 - **Rutas de la SPA:** `vercel.json` reescribe cualquier ruta a `/index.html` para que la ruta `/admin` (RF-10) funcione al abrirla directamente o al recargar. Los archivos estáticos existentes (JS, CSS, imágenes) se sirven antes de aplicar la reescritura.
 - **Códigos QR (RF-05 / RF-09 / RF-14):** se imprimen desde el dominio de producción, ya que codifican `window.location.origin`. Incluye el QR de Taquilla (`/?view=pago`) generado en el panel de administración.
+- **Service Worker (RF-15):** `/sw.js` se sirve desde `public/` como archivo estático **antes** de la reescritura a `/index.html` (igual que los demás estáticos). `vercel.json` fija `Cache-Control: public, max-age=0, must-revalidate` para `/sw.js` para que el navegador detecte cada deploy. Verificación en el despliegue: DevTools → Application → Service Workers (estado `activated` y «source» = `/sw.js`) y Application → Cache Storage con la caché `museoqr-v1` (shell + assets + recursos visitados).

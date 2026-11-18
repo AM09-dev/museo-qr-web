@@ -63,6 +63,8 @@ export interface TextosUI {
   copiado: string;
   cargandoTaquilla: string;
   taquillaSinDatos: string;
+  /** RF-15: aviso de datos leídos de la copia local (sin conexión) */
+  avisoSinConexion: string;
 }
 
 export const textosUI: Record<Language, TextosUI> = {
@@ -110,6 +112,9 @@ export const textosUI: Record<Language, TextosUI> = {
     copiado: 'Copiado',
     cargandoTaquilla: 'Cargando información de taquilla…',
     taquillaSinDatos: 'La taquilla aún no tiene datos de pago configurados.',
+    avisoSinConexion:
+      'Sin conexión: mostramos los datos guardados en tu última visita. ' +
+      'El pago en línea (por ejemplo, Mercado Pago) requiere internet.',
   },
   en: {
     tituloApp: 'Interactive Museum',
@@ -155,6 +160,9 @@ export const textosUI: Record<Language, TextosUI> = {
     copiado: 'Copied',
     cargandoTaquilla: 'Loading box office information…',
     taquillaSinDatos: 'The box office has no payment data configured yet.',
+    avisoSinConexion:
+      'Offline: we are showing the data saved on your last visit. ' +
+      'Online payment (for example, Mercado Pago) requires an internet connection.',
   },
   fr: {
     tituloApp: 'Musée interactif',
@@ -200,6 +208,9 @@ export const textosUI: Record<Language, TextosUI> = {
     copiado: 'Copié',
     cargandoTaquilla: 'Chargement des informations de billetterie…',
     taquillaSinDatos: 'La billetterie n’a pas encore de données de paiement configurées.',
+    avisoSinConexion:
+      'Hors ligne : nous affichons les données enregistrées lors de votre dernière visite. ' +
+      'Le paiement en ligne (par exemple Mercado Pago) nécessite une connexion internet.',
   },
   de: {
     tituloApp: 'Interaktives Museum',
@@ -245,6 +256,9 @@ export const textosUI: Record<Language, TextosUI> = {
     copiado: 'Kopiert',
     cargandoTaquilla: 'Kasseninformationen werden geladen…',
     taquillaSinDatos: 'Für die Kasse sind noch keine Zahlungsdaten hinterlegt.',
+    avisoSinConexion:
+      'Offline: Wir zeigen die Daten, die bei Ihrem letzten Besuch gespeichert wurden. ' +
+      'Die Online-Zahlung (z. B. Mercado Pago) erfordert eine Internetverbindung.',
   },
 };
 

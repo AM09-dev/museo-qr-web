@@ -68,6 +68,8 @@ export function TicketPaymentView({ language, onBack }: Props) {
 
   const [settings, setSettings] = useState<MuseumSettings | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  // RF-15: los datos vienen de la copia local (sin conexión)
+  const [desdeRespaldo, setDesdeRespaldo] = useState<boolean>(false);
   const [copied, setCopied] = useState<'clabe' | 'monto' | null>(null);
 
   // Lectura pública en tiempo real desde Supabase (RF-14)
@@ -81,6 +83,7 @@ export function TicketPaymentView({ language, onBack }: Props) {
         console.warn('[TicketPaymentView] No se pudo cargar la taquilla.', result.error);
       }
       setSettings(result.settings);
+      setDesdeRespaldo(Boolean(result.fromCache));
       setIsLoading(false);
     });
 
@@ -111,6 +114,13 @@ export function TicketPaymentView({ language, onBack }: Props) {
         <h2 className="taquilla-title">{t.taquillaTitulo}</h2>
         <p className="taquilla-intro">{t.taquillaIntro}</p>
 
+        {/* RF-15: datos de la copia local → aviso y sin pago en línea */}
+        {desdeRespaldo && !isLoading && (
+          <p className="taquilla-offline" role="status">
+            {t.avisoSinConexion}
+          </p>
+        )}
+
         {isLoading ? (
           <VistaCarga label={t.cargandoTaquilla} />
         ) : (
@@ -136,7 +146,8 @@ export function TicketPaymentView({ language, onBack }: Props) {
               <div className="qr-card__frame">
                 <QRCodeSVG value={pagoUrl} size={160} level="H" includeMargin={true} />
               </div>
-              {tieneLink && (
+              {/* RF-15: sin conexión el pago en línea es imposible → no se ofrece */}
+              {tieneLink && !desdeRespaldo && (
                 <a
                   className="btn btn--primary taquilla-pagar"
                   href={settings!.paymentLink}
