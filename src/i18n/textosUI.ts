@@ -69,7 +69,7 @@ export interface TextosUI {
 
 export const textosUI: Record<Language, TextosUI> = {
   es: {
-    tituloApp: 'Museo Interactivo',
+    tituloApp: 'Museo Utrilla',
     verQr: 'Ver QR',
     verQrAccesible: 'Ver códigos QR',
     seleccionarIdioma: 'Seleccionar idioma',
@@ -117,7 +117,7 @@ export const textosUI: Record<Language, TextosUI> = {
       'El pago en línea (por ejemplo, Mercado Pago) requiere internet.',
   },
   en: {
-    tituloApp: 'Interactive Museum',
+    tituloApp: 'Museo Utrilla',
     verQr: 'View QR',
     verQrAccesible: 'View QR codes',
     seleccionarIdioma: 'Select language',
@@ -165,7 +165,7 @@ export const textosUI: Record<Language, TextosUI> = {
       'Online payment (for example, Mercado Pago) requires an internet connection.',
   },
   fr: {
-    tituloApp: 'Musée interactif',
+    tituloApp: 'Museo Utrilla',
     verQr: 'Voir QR',
     verQrAccesible: 'Voir les codes QR',
     seleccionarIdioma: 'Choisir la langue',
@@ -213,7 +213,7 @@ export const textosUI: Record<Language, TextosUI> = {
       'Le paiement en ligne (par exemple Mercado Pago) nécessite une connexion internet.',
   },
   de: {
-    tituloApp: 'Interaktives Museum',
+    tituloApp: 'Museo Utrilla',
     verQr: 'QR anzeigen',
     verQrAccesible: 'QR-Codes anzeigen',
     seleccionarIdioma: 'Sprache wählen',
